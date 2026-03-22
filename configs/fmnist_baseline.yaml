@@ -1,0 +1,26 @@
+experiment_name: fmnist_baseline
+seed: 42
+output_dir: results/metrics
+checkpoint_dir: checkpoints
+
+dataset:
+  name: fashion_mnist
+  root: data/raw
+  image_size: 28
+  channels: 1
+  num_classes: 10
+
+model:
+  d_input: 784
+  d_hidden: 256
+  n_layer: 1
+  d_output: 10
+  bias: false
+  residual: false
+
+train:
+  epochs: 20
+  batch_size: 512
+  lr: 0.001
+  wd: 0.5
+  device: auto

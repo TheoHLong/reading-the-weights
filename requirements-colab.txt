@@ -1,0 +1,9 @@
+einops
+jaxtyping
+kornia
+numpy
+pandas
+plotly
+pyyaml
+tqdm
+transformers

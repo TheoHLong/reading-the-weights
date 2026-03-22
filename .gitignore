@@ -1,0 +1,30 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Experiment outputs
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+checkpoints/*
+!checkpoints/.gitkeep
+results/figures/*
+!results/figures/.gitkeep
+results/metrics/*
+!results/metrics/.gitkeep
+wandb/
+
+# Editor
+.vscode/
+.idea/
