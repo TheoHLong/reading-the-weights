@@ -1,13 +1,7 @@
 # Scripts
 
-Keep scripts small and single-purpose.
+Task A uses two entry points only.
 
-Current entry points:
-
-- `train_mnist.py`: train the first reproducible baseline
-- `analyze_mnist.py`: eigendecomposition export and eigenspectrum plot
-
-Planned next entry points:
-
-- `train_fmnist.py`: second grayscale replication
-- `train_cifar10.py`: color-image extension after the baseline is stable
+- `smoke_test.py`: run a tiny end-to-end train -> checkpoint -> decompose validation
+- `train_baseline.py`: train the bilinear baseline on MNIST or Fashion-MNIST
+- `analyze_checkpoint.py`: export tensor and eigendecomposition artifacts from a trained checkpoint

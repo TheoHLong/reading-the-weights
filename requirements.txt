@@ -1,11 +1,8 @@
 einops
 jaxtyping
-kornia
 numpy
 pandas
-plotly
 pyyaml
 torch
 torchvision
 tqdm
-transformers

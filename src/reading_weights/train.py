@@ -10,18 +10,24 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from tqdm.auto import tqdm
 
 from reading_weights.data.image_data import build_image_dataloaders
-from reading_weights.models.image_classifier import BilinearImageClassifier
+from reading_weights.models.image_classifier import build_image_classifier
 from reading_weights.utils import ensure_dir, resolve_device, set_seed, timestamp, write_json
 
 
 @torch.no_grad()
-def evaluate(model: nn.Module, loader, criterion: nn.Module, device: torch.device) -> tuple[float, float]:
+def evaluate(
+    model: nn.Module,
+    loader,
+    criterion: nn.Module,
+    device: torch.device,
+    max_batches: int | None = None,
+) -> tuple[float, float]:
     model.eval()
     total_loss = 0.0
     total_correct = 0
     total_examples = 0
 
-    for x, y in loader:
+    for batch_idx, (x, y) in enumerate(loader, start=1):
         x = x.to(device, non_blocking=True)
         y = y.to(device, non_blocking=True)
         logits = model(x)
@@ -31,6 +37,9 @@ def evaluate(model: nn.Module, loader, criterion: nn.Module, device: torch.devic
         total_correct += (logits.argmax(dim=-1) == y).sum().item()
         total_examples += y.size(0)
 
+        if max_batches is not None and batch_idx >= max_batches:
+            break
+
     return total_loss / total_examples, total_correct / total_examples
 
 
@@ -39,17 +48,11 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
 
     dataset_bundle = build_image_dataloaders(config['dataset'], config['train'])
     device = resolve_device(config['train'].get('device', 'auto'))
-
-    model_cfg = config['model']
-    model = BilinearImageClassifier(
-        d_input=int(model_cfg['d_input']),
-        d_hidden=int(model_cfg['d_hidden']),
-        d_output=int(model_cfg['d_output']),
-        n_layer=int(model_cfg['n_layer']),
-        bias=bool(model_cfg['bias']),
-        residual=bool(model_cfg['residual']),
-        seed=int(config['seed']),
-    ).to(device)
+    max_train_batches = config['train'].get('max_train_batches')
+    max_eval_batches = config['train'].get('max_eval_batches')
+    max_train_batches = None if max_train_batches in (None, 0) else int(max_train_batches)
+    max_eval_batches = None if max_eval_batches in (None, 0) else int(max_eval_batches)
+    model = build_image_classifier(config['model'], seed=int(config['seed'])).to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = AdamW(
@@ -75,7 +78,7 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
         running_correct = 0
         running_examples = 0
 
-        for x, y in dataset_bundle.train_loader:
+        for batch_idx, (x, y) in enumerate(dataset_bundle.train_loader, start=1):
             x = x.to(device, non_blocking=True)
             y = y.to(device, non_blocking=True)
 
@@ -89,11 +92,20 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
             running_correct += (logits.argmax(dim=-1) == y).sum().item()
             running_examples += y.size(0)
 
+            if max_train_batches is not None and batch_idx >= max_train_batches:
+                break
+
         scheduler.step()
 
         train_loss = running_loss / running_examples
         train_acc = running_correct / running_examples
-        val_loss, val_acc = evaluate(model, dataset_bundle.test_loader, criterion, device)
+        val_loss, val_acc = evaluate(
+            model,
+            dataset_bundle.test_loader,
+            criterion,
+            device,
+            max_batches=max_eval_batches,
+        )
 
         row = {
             'epoch': epoch,
@@ -105,37 +117,32 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
         }
         history.append(row)
 
-        torch.save(
-            {
-                'model_state_dict': model.state_dict(),
-                'config': config,
-                'epoch': epoch,
-                'metrics': row,
-            },
-            latest_checkpoint_path,
-        )
+        checkpoint_payload = {
+            'model_state_dict': model.state_dict(),
+            'config': config,
+            'epoch': epoch,
+            'metrics': row,
+        }
+        torch.save(checkpoint_payload, latest_checkpoint_path)
 
         if val_acc > best_val_acc:
             best_val_acc = val_acc
-            torch.save(
-                {
-                    'model_state_dict': model.state_dict(),
-                    'config': config,
-                    'epoch': epoch,
-                    'metrics': row,
-                },
-                best_checkpoint_path,
-            )
+            torch.save(checkpoint_payload, best_checkpoint_path)
 
     metrics_path = run_dir / 'metrics.csv'
     pd.DataFrame(history).to_csv(metrics_path, index=False)
-    write_json(run_dir / 'summary.json', {
-        'run_name': run_name,
-        'device': str(device),
-        'best_val_acc': best_val_acc,
-        'best_checkpoint': str(best_checkpoint_path),
-        'latest_checkpoint': str(latest_checkpoint_path),
-    })
+    write_json(run_dir / 'config.json', config)
+    write_json(
+        run_dir / 'summary.json',
+        {
+            'run_name': run_name,
+            'dataset': config['dataset']['name'],
+            'device': str(device),
+            'best_val_acc': best_val_acc,
+            'best_checkpoint': str(best_checkpoint_path),
+            'latest_checkpoint': str(latest_checkpoint_path),
+        },
+    )
 
     return {
         'run_dir': run_dir,

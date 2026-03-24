@@ -1,23 +1,27 @@
-# Roadmap
+# Task A Roadmap
 
-## Milestone 0: Repository setup
-- keep upstream reference code separate
-- track configs, scripts, notes, and small summaries in git
-- store large artifacts in Drive or local ignored folders
+## Boundary
+- stay within MNIST and Fashion-MNIST
+- stay within single-layer bilinear baseline models
+- produce stable artifacts that unblock later analysis and visualization work
 
-## Milestone 1: MNIST baseline
-- train a single-layer bilinear MLP
-- reproduce eigendecomposition plots
-- log validation accuracy and truncation experiments
+## Milestone A1: Core reimplementation
+- implement bilinear layer forward pass
+- implement class-wise bilinear tensor construction
+- implement tensor symmetrization
+- implement eigendecomposition and projection back to input space
 
-## Milestone 2: Fashion-MNIST replication
-- verify the same pipeline on a second grayscale dataset
-- compare spectra and qualitative eigenvectors
+## Milestone A2: Training framework
+- dataloader for MNIST and Fashion-MNIST
+- training loop, optimizer, scheduler
+- checkpoint saving for best and latest models
+- per-epoch metrics export
 
-## Milestone 3: CIFAR-10 extension
-- add color-image dataset support
-- update plotting and decomposition utilities for 32x32x3 inputs
+## Milestone A3: Baseline runs
+- train MNIST baseline
+- train Fashion-MNIST baseline
+- verify checkpoints can be decomposed without notebook-only code
 
-## Milestone 4: Stretch goal
-- only after the baseline is stable
-- prefer distillation before CKA on Colab due to memory pressure
+## Milestone A4: Handoff contract
+- hand off checkpoints, metrics, and decomposition artifacts
+- keep visualization and figure replication out of Task A code

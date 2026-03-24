@@ -3,13 +3,19 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / 'src'
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
 from reading_weights.config import load_config
 from reading_weights.train import train_image_experiment
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description='Train the MNIST bilinear baseline.')
+    parser = argparse.ArgumentParser(description='Train a Task A bilinear baseline.')
     parser.add_argument(
         '--config',
         type=Path,

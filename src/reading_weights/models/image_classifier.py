@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import torch
-from einops import einsum, rearrange
+from einops import rearrange
 from torch import Tensor, nn
 
 from reading_weights.models.layers import Bilinear, Linear
@@ -35,37 +35,28 @@ class BilinearImageClassifier(nn.Module):
         return self.head(x)
 
     @property
-    def w_e(self) -> Tensor:
+    def embedding_weight(self) -> Tensor:
         return self.embed.weight.detach()
 
     @property
-    def w_u(self) -> Tensor:
+    def output_weight(self) -> Tensor:
         return self.head.weight.detach()
 
     @property
-    def w_lr(self) -> Tensor:
+    def bilinear_weights(self) -> Tensor:
         return torch.stack([
-            rearrange(layer.weight.detach(), '(s o) h -> s o h', s=2)
+            rearrange(layer.weight.detach(), '(side out) hidden -> side out hidden', side=2)
             for layer in self.blocks
         ])
 
-    def decompose(self) -> tuple[Tensor, Tensor]:
-        if len(self.blocks) != 1:
-            raise ValueError('decompose() currently supports single-layer models only.')
 
-        left, right = self.w_lr[0].unbind()
-        bilinear_tensor = einsum(
-            self.w_u,
-            left,
-            right,
-            'cls out, out in1, out in2 -> cls in1 in2',
-        )
-        bilinear_tensor = 0.5 * (bilinear_tensor + bilinear_tensor.mT)
-
-        eigenvalues, eigenvectors = torch.linalg.eigh(bilinear_tensor)
-        eigenvectors = einsum(
-            eigenvectors,
-            self.w_e,
-            'cls emb comp, emb inp -> cls comp inp',
-        )
-        return eigenvalues, eigenvectors
+def build_image_classifier(model_cfg: dict, seed: int) -> BilinearImageClassifier:
+    return BilinearImageClassifier(
+        d_input=int(model_cfg['d_input']),
+        d_hidden=int(model_cfg['d_hidden']),
+        d_output=int(model_cfg['d_output']),
+        n_layer=int(model_cfg['n_layer']),
+        bias=bool(model_cfg['bias']),
+        residual=bool(model_cfg['residual']),
+        seed=seed,
+    )

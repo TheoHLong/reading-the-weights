@@ -19,8 +19,10 @@ model:
   residual: false
 
 train:
-  epochs: 20
+  epochs: 100
   batch_size: 512
   lr: 0.001
   wd: 0.5
+  num_workers: 2
+  pin_memory: true
   device: auto

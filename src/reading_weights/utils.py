@@ -41,3 +41,11 @@ def resolve_device(name: str) -> torch.device:
 def write_json(path: str | Path, payload: dict[str, Any]) -> None:
     path = Path(path)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding='utf-8')
+
+
+def load_checkpoint(path: str | Path, map_location: str | torch.device = 'cpu') -> dict[str, Any]:
+    path = Path(path)
+    try:
+        return torch.load(path, map_location=map_location, weights_only=False)
+    except TypeError:
+        return torch.load(path, map_location=map_location)

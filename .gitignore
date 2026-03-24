@@ -19,8 +19,8 @@ data/processed/*
 !data/processed/.gitkeep
 checkpoints/*
 !checkpoints/.gitkeep
-results/figures/*
-!results/figures/.gitkeep
+results/analysis/*
+!results/analysis/.gitkeep
 results/metrics/*
 !results/metrics/.gitkeep
 wandb/

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import torch
 from jaxtyping import Float
 from torch import Tensor, nn
 
 
 class Bilinear(nn.Linear):
+    """Bilinear layer implemented as two linear projections multiplied elementwise."""
+
     def __init__(self, d_in: int, d_out: int, bias: bool = False, gate: str | None = None) -> None:
         super().__init__(d_in, 2 * d_out, bias=bias)
         self.gate = {
