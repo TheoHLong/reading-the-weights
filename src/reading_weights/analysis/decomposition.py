@@ -52,6 +52,7 @@ def project_eigenvectors_to_input(eigenvectors_hidden: Tensor, embedding_weight:
     )
 
 
+@torch.no_grad()
 def decompose_bilinear_model(model: BilinearImageClassifier) -> DecompositionArtifacts:
     bilinear_tensor = build_bilinear_tensor(model)
     symmetrized_tensor = symmetrize_bilinear_tensor(bilinear_tensor)

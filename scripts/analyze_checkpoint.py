@@ -3,14 +3,12 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-import sys
-
-ROOT = Path(__file__).resolve().parents[1]
-SRC = ROOT / 'src'
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
 
 import torch
+
+from _bootstrap import ensure_src_on_path
+
+ensure_src_on_path()
 
 from reading_weights.analysis.decomposition import decompose_bilinear_model
 from reading_weights.models.image_classifier import build_image_classifier
@@ -45,6 +43,7 @@ def main() -> None:
             'checkpoint': str(args.checkpoint),
             'dataset': config['dataset']['name'],
             'epoch': int(payload['epoch']),
+            'val_acc': float(payload['metrics']['val_acc']),
             'top_class': top_class,
             'top_eigenvalue': float(artifacts.eigenvalues[top_class, -1].item()),
             'tensor_shapes': {

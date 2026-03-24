@@ -60,6 +60,8 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
         lr=float(config['train']['lr']),
         weight_decay=float(config['train']['wd']),
     )
+    # CosineAnnealingLR here is epoch-based by design; max_train_batches is only
+    # a smoke-test/debug limiter and does not redefine the scheduler timescale.
     scheduler = CosineAnnealingLR(optimizer, T_max=int(config['train']['epochs']))
 
     run_name = f"{config['experiment_name']}_{timestamp()}"
