@@ -9,8 +9,8 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from tqdm.auto import tqdm
 
-from reading_weights.data.image_data import build_image_dataloaders
-from reading_weights.models.image_classifier import build_image_classifier
+from reading_weights.data import build_image_dataloaders
+from reading_weights.model import build_image_classifier
 from reading_weights.utils import ensure_dir, resolve_device, set_seed, timestamp, write_json
 
 

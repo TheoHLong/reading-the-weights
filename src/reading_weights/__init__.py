@@ -1,1 +1,1 @@
-"""Reading the Weights project package."""
+"""Reading the Weights Task A package."""

@@ -11,9 +11,9 @@ from _bootstrap import ensure_src_on_path
 
 ensure_src_on_path()
 
-from reading_weights.analysis.decomposition import decompose_bilinear_model
+from reading_weights.decomposition import decompose_bilinear_model
 from reading_weights.config import load_config
-from reading_weights.models.image_classifier import build_image_classifier
+from reading_weights.model import build_image_classifier
 from reading_weights.train import train_image_experiment
 from reading_weights.utils import ensure_dir, load_checkpoint, write_json
 

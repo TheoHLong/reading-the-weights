@@ -15,8 +15,6 @@ env/
 # Experiment outputs
 data/raw/*
 !data/raw/.gitkeep
-data/processed/*
-!data/processed/.gitkeep
 checkpoints/*
 !checkpoints/.gitkeep
 results/analysis/*

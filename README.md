@@ -4,7 +4,7 @@ Task A workspace for the CS7643 final project on bilinear MLP weight interpretab
 
 ## Scope
 
-This repository currently focuses on Task A only:
+This repository currently focuses on Task A:
 
 - implement the bilinear layer forward pass
 - implement bilinear tensor construction and symmetrization
@@ -12,15 +12,13 @@ This repository currently focuses on Task A only:
 - implement the training framework
 - train baseline models on MNIST and Fashion-MNIST
 
-Anything outside Task A stays out of this code path until the baseline artifacts are stable.
+## Layout
 
-## A-only layout
-
-- `src/reading_weights/models/`: bilinear layer and baseline classifier
-- `src/reading_weights/analysis/`: tensor construction, symmetrization, eigendecomposition
-- `src/reading_weights/data/`: MNIST and Fashion-MNIST dataloaders
-- `scripts/train_baseline.py`: train a baseline from a YAML config
-- `scripts/analyze_checkpoint.py`: export decomposition artifacts from a checkpoint
+- `src/reading_weights/model.py`: bilinear layer and baseline classifier
+- `src/reading_weights/decomposition.py`: tensor construction, symmetrization, eigendecomposition
+- `src/reading_weights/data.py`: MNIST and Fashion-MNIST dataloaders
+- `src/reading_weights/train.py`: training loop and checkpoint logic
+- `scripts/`: three runnable entrypoints plus the small path bootstrap helper
 - `configs/`: MNIST and Fashion-MNIST baseline configs
 
 ## Artifact contract
@@ -46,11 +44,9 @@ python scripts/train_baseline.py --config configs/fmnist_baseline.yaml
 python scripts/analyze_checkpoint.py --checkpoint checkpoints/<best-run>.pt
 ```
 
-## Colab workflow
+## Workflow
 
-1. Push this repository to GitHub.
-2. Open Colab and mount Google Drive.
-3. Clone the repo into the Colab runtime.
-4. Run `bash scripts/setup_colab.sh`.
-5. Run one baseline config at a time.
-6. Save large artifacts to Drive, not to git.
+1. Run `python scripts/smoke_test.py --config configs/mnist_baseline.yaml`
+2. Train MNIST and Fashion-MNIST with `scripts/train_baseline.py`
+3. Export decomposition artifacts with `scripts/analyze_checkpoint.py`
+4. Save large artifacts to Drive, not to git
