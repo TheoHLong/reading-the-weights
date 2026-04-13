@@ -2,6 +2,8 @@
 
 Task A workspace for the CS7643 final project on bilinear MLP weight interpretability.
 
+Task D work should be logged in `TASK_D_WORKLOG.md`.
+
 ## Scope
 
 This repository currently focuses on Task A:
@@ -17,6 +19,7 @@ This repository currently focuses on Task A:
 - `src/reading_weights/model.py`: bilinear layer and baseline classifier
 - `src/reading_weights/decomposition.py`: tensor construction, symmetrization, eigendecomposition
 - `src/reading_weights/data.py`: MNIST and Fashion-MNIST dataloaders
+- `src/reading_weights/data.py`: image dataloaders with train/val/test splits and CIFAR-10 support
 - `src/reading_weights/train.py`: training loop and checkpoint logic
 - `scripts/`: three runnable entrypoints plus the small path bootstrap helper
 - `configs/`: MNIST and Fashion-MNIST baseline configs
@@ -50,6 +53,22 @@ python scripts/analyze_checkpoint.py --checkpoint checkpoints/<best-run>.pt
 2. Train MNIST and Fashion-MNIST with `scripts/train_baseline.py`
 3. Export decomposition artifacts with `scripts/analyze_checkpoint.py`
 4. Save large artifacts to Drive, not to git
+
+## Environment
+
+Local virtual environment:
+
+```bash
+uv venv .venv
+source .venv/bin/activate
+```
+
+Docker dependency install path:
+
+```bash
+docker build -t reading-the-weights .
+docker run --rm reading-the-weights python scripts/smoke_test.py --config configs/mnist_baseline.yaml
+```
 
 ## API reference (for Task B/C/D/E/F)
 
@@ -88,7 +107,7 @@ Below is the interface contract for the core modules. Downstream tasks should on
 
 | Symbol | Description |
 |--------|-------------|
-| `build_image_dataloaders(dataset_cfg, train_cfg)` | Returns a `DatasetBundle(train_loader, test_loader, input_shape, num_classes)`. Currently supports `mnist` and `fashion_mnist`. |
+| `build_image_dataloaders(dataset_cfg, train_cfg)` | Returns a `DatasetBundle(train_loader, val_loader, test_loader, input_shape, num_classes)`. Supports `mnist`, `fashion_mnist`, and `cifar10`. |
 
 ### train.py
 
@@ -122,3 +141,5 @@ Below is the interface contract for the core modules. Downstream tasks should on
 |---------|-------------|------------|------------|
 | MNIST | 97.99% | 38 | `mnist_baseline_20260324-025128.pt` |
 | Fashion-MNIST | 89.09% | 94 | `fmnist_baseline_20260324-025914.pt` |
+
+Historical note: these baseline figures were produced before Task D corrected the validation/test split.

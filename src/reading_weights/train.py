@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import platform
 from pathlib import Path
 
 import pandas as pd
@@ -11,7 +12,7 @@ from tqdm.auto import tqdm
 
 from reading_weights.data import build_image_dataloaders
 from reading_weights.model import build_image_classifier
-from reading_weights.utils import ensure_dir, resolve_device, set_seed, timestamp, write_json
+from reading_weights.utils import ensure_dir, load_checkpoint, resolve_device, set_seed, timestamp, write_json
 
 
 @torch.no_grad()
@@ -45,9 +46,16 @@ def evaluate(
 
 def train_image_experiment(config: dict) -> dict[str, Path]:
     set_seed(int(config['seed']))
+    config.setdefault('train', {})
+    config['train'].setdefault('split_seed', int(config['seed']))
+    device = resolve_device(config['train'].get('device', 'auto'))
+    if device.type == 'cpu':
+        config['train']['pin_memory'] = False
+        if platform.system() == 'Darwin':
+            # Torch shared-memory workers can fail under sandboxed macOS runs.
+            config['train']['num_workers'] = 0
 
     dataset_bundle = build_image_dataloaders(config['dataset'], config['train'])
-    device = resolve_device(config['train'].get('device', 'auto'))
     max_train_batches = config['train'].get('max_train_batches')
     max_eval_batches = config['train'].get('max_eval_batches')
     max_train_batches = None if max_train_batches in (None, 0) else int(max_train_batches)
@@ -103,7 +111,7 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
         train_acc = running_correct / running_examples
         val_loss, val_acc = evaluate(
             model,
-            dataset_bundle.test_loader,
+            dataset_bundle.val_loader,
             criterion,
             device,
             max_batches=max_eval_batches,
@@ -131,6 +139,17 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
             best_val_acc = val_acc
             torch.save(checkpoint_payload, best_checkpoint_path)
 
+    best_payload = load_checkpoint(best_checkpoint_path, map_location=device)
+    best_model = build_image_classifier(best_payload['config']['model'], seed=int(best_payload['config']['seed'])).to(device)
+    best_model.load_state_dict(best_payload['model_state_dict'])
+    test_loss, test_acc = evaluate(
+        best_model,
+        dataset_bundle.test_loader,
+        criterion,
+        device,
+        max_batches=max_eval_batches,
+    )
+
     metrics_path = run_dir / 'metrics.csv'
     pd.DataFrame(history).to_csv(metrics_path, index=False)
     write_json(run_dir / 'config.json', config)
@@ -141,6 +160,8 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
             'dataset': config['dataset']['name'],
             'device': str(device),
             'best_val_acc': best_val_acc,
+            'test_loss_at_best_val': test_loss,
+            'test_acc_at_best_val': test_acc,
             'best_checkpoint': str(best_checkpoint_path),
             'latest_checkpoint': str(latest_checkpoint_path),
         },
