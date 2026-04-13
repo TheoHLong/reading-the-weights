@@ -30,6 +30,7 @@ This file records all Task D changes to Kai's code, all new code additions, envi
 - Added final test-set evaluation for the checkpoint selected by validation accuracy.
 - Added a CPU-safe macOS fallback in training to avoid `torch_shm_manager` worker crashes during local runs.
 - Added `scripts/evaluate_truncation.py` to measure eigenvalue truncation vs. accuracy directly from checkpoints.
+- Added a fixed locality-preserving preprocessing path in the model via optional average pooling represented as a linear projection.
 
 ### New files
 
@@ -37,6 +38,8 @@ This file records all Task D changes to Kai's code, all new code additions, envi
 - `configs/cifar10_pilot.yaml`
 - `configs/cifar10_pilot_mps.yaml`
 - `configs/cifar10_headline_mps.yaml`
+- `configs/cifar10_completion_mps.yaml`
+- `configs/cifar10_locality_mps.yaml`
 - `configs/mnist_pilot_mps.yaml`
 - `Dockerfile`
 - `.dockerignore`
@@ -117,6 +120,33 @@ This file records all Task D changes to Kai's code, all new code additions, envi
     - full rank `512` accuracy `0.4181`
   - Interpretation: longer training improves accuracy but does not make CIFAR-10 low-rank in the MNIST sense; the spectrum still matters broadly.
 
+- CIFAR-10 completion MPS baseline, local `uv` environment, config `configs/cifar10_completion_mps.yaml`
+  - Command: `.venv/bin/python scripts/train_baseline.py --config configs/cifar10_completion_mps.yaml`
+  - Hardware: `mps`
+  - Run name: `cifar10_completion_mps_20260412-225712`
+  - Epochs: `50`
+  - Best val accuracy: `0.4452`
+  - Test accuracy at best validation checkpoint: `0.4408`
+  - Truncation summary:
+    - rank `64` accuracy `0.4280`
+    - rank `128` accuracy `0.4424`
+    - full rank `512` accuracy `0.4408`
+  - Interpretation: the raw-pixel version continues improving with longer training but still remains broad-spectrum.
+
+- CIFAR-10 locality-preserving redesign, local `uv` environment, config `configs/cifar10_locality_mps.yaml`
+  - Command: `.venv/bin/python scripts/train_baseline.py --config configs/cifar10_locality_mps.yaml`
+  - Hardware: `mps`
+  - Run name: `cifar10_locality_mps_20260412-230328`
+  - Epochs: `25`
+  - Best val accuracy: `0.4328`
+  - Test accuracy at best validation checkpoint: `0.4200`
+  - Truncation summary:
+    - rank `32` accuracy `0.4037`
+    - rank `64` accuracy `0.4215`
+    - rank `128` accuracy `0.4201`
+    - full rank `512` accuracy `0.4200`
+  - Interpretation: this first locality-preserving redesign modestly steepens the truncation curve relative to the matched 25-epoch raw-pixel baseline.
+
 - CIFAR-10 width ablation, local `uv` environment, config `configs/cifar10_width1024_mps.yaml`
   - Command: `.venv/bin/python scripts/train_baseline.py --config configs/cifar10_width1024_mps.yaml`
   - Hardware: `mps`
@@ -163,6 +193,8 @@ This file records all Task D changes to Kai's code, all new code additions, envi
 - Local CIFAR-10 headline MPS baseline result: passed
 - Local CIFAR-10 width ablation result: passed
 - Local CIFAR-10 lower-weight-decay ablation result: passed
+- Local CIFAR-10 completion baseline result: passed
+- Local CIFAR-10 locality-preserving redesign result: passed
 
 ### Notes
 
@@ -182,3 +214,7 @@ This file records all Task D changes to Kai's code, all new code additions, envi
   - Width alone does not rescue the method.
   - Lower weight decay does not rescue the method.
   - The next serious move should be a locality-preserving redesign rather than more scalar hyperparameter tuning.
+- First redesign read:
+  - At matched 25-epoch budget, locality-preserving preprocessing slightly improves the truncation curve.
+  - This is not yet a decisive accuracy win over the best raw-pixel run, but it is the first structurally meaningful positive signal.
+  - The next step should expand the locality-preserving family rather than reverting to scalar tuning.

@@ -24,6 +24,10 @@ This file tracks pending, running, and completed local experiments for Task D.
   - Goal: test whether stronger or modified regularization improves CIFAR spectra
   - Status: first lower-weight-decay pilot completed, no clear improvement
 
+- `locality-redesign`
+  - Goal: test whether fixed locality-preserving preprocessing steepens the CIFAR truncation curve
+  - Status: first avg-pool redesign completed, modestly promising
+
 ## Deferred until baseline quality improves
 
 - Patchified/locality-preserving redesign
@@ -35,4 +39,5 @@ This file tracks pending, running, and completed local experiments for Task D.
 - Longer raw-pixel CIFAR training improves accuracy modestly but does not create MNIST-like spectral concentration.
 - MNIST retains near-full performance by rank `8-16`, while CIFAR-10 still benefits materially through rank `64-128+`.
 - First width and weight-decay ablations did not materially change the conclusion.
-- The next iteration should prioritize locality-preserving redesign over more scalar hyperparameter tuning.
+- First locality-preserving redesign slightly steepens the truncation curve at matched 25-epoch budget.
+- The next iteration should prioritize stronger locality-preserving variants or replication over more scalar hyperparameter tuning.
