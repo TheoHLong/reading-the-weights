@@ -22,6 +22,7 @@ results/analysis/*
 !results/analysis/.gitkeep
 results/metrics/*
 !results/metrics/.gitkeep
+results/truncation/*
 wandb/
 
 # Editor
