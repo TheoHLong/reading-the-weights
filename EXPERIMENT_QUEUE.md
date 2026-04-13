@@ -26,7 +26,7 @@ This file tracks pending, running, and completed local experiments for Task D.
 
 - `locality-redesign`
   - Goal: test whether fixed locality-preserving preprocessing steepens the CIFAR truncation curve
-  - Status: first avg-pool redesign completed, modestly promising
+  - Status: first `2x2` redesign promising; stronger `4x4` redesign currently strongest result
 
 ## Deferred until baseline quality improves
 
@@ -40,4 +40,5 @@ This file tracks pending, running, and completed local experiments for Task D.
 - MNIST retains near-full performance by rank `8-16`, while CIFAR-10 still benefits materially through rank `64-128+`.
 - First width and weight-decay ablations did not materially change the conclusion.
 - First locality-preserving redesign slightly steepens the truncation curve at matched 25-epoch budget.
-- The next iteration should prioritize stronger locality-preserving variants or replication over more scalar hyperparameter tuning.
+- Stronger `4x4` pooling gives the best redesign result so far, with rank-32/64 performance much closer to full-rank accuracy.
+- The next iteration should prioritize replication and careful refinement of locality-preserving variants over more scalar hyperparameter tuning.

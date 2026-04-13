@@ -6,6 +6,19 @@ This file defines the operating rules for Task D so experiments remain reproduci
 
 Do not treat an experiment as evidence unless its setup, artifacts, and interpretation are recoverable from the repository and the local filesystem.
 
+## Phase gates
+
+Task D now has two explicit phases:
+
+- `raw-pixel completion`
+  - Goal: finish the original assignment faithfully.
+  - Exit condition: CIFAR pipeline, decomposition, and truncation analysis all work; longer training and basic scalar ablations have been tried.
+- `locality-preserving redesign`
+  - Goal: test whether adding structured inductive bias improves spectral concentration on CIFAR-10.
+  - Entry condition: raw-pixel CIFAR remains broad-spectrum after fair training.
+
+Do not mix conclusions across phases. A redesign result is not evidence that the original method worked; it is evidence about the modified method.
+
 ## Must-log items for every run
 
 - Date and local branch
@@ -35,6 +48,7 @@ Do not treat an experiment as evidence unless its setup, artifacts, and interpre
 - `pilot`: short training used to test directionality
 - `ablation`: controlled comparison changing one variable at a time
 - `headline`: longer run intended for report-quality conclusions
+- `redesign`: architectural change tested against the best completed baseline with the same analysis protocol
 
 Do not communicate pilot results to the team as if they are final findings.
 
@@ -46,6 +60,7 @@ Progress is meaningful enough to communicate when at least one of these is true:
 - A run changes the interpretation of Task D, for example proving the current CIFAR plan is structurally weak.
 - A result is replicated across at least two seeds or two comparable runs.
 - A new method beats the current best CIFAR baseline by a clear margin and also produces decomposition artifacts.
+- A redesign improves the truncation curve in a way that changes the scientific interpretation of Task D, even if top-line accuracy changes only modestly.
 - A negative result is strong enough to justify redesign, not just more tuning.
 
 ## Team communication triggers
@@ -55,6 +70,7 @@ Message the team when:
 - `build_image_dataloaders` API changed to include validation handling.
 - Task D no longer looks like a simple CIFAR extension and needs a revised interpretation.
 - We have the first report-quality CIFAR result with both accuracy and decomposition analysis.
+- We have enough evidence to say the original raw-pixel Task D is complete and a redesign is justified.
 - We need to coordinate around shared interfaces or figure-generation expectations.
 
 ## Research hygiene rules
@@ -65,6 +81,8 @@ Message the team when:
 - Prefer small controlled sweeps over one-off heroic runs.
 - If a run fails, log the failure mode and whether it is scientific or infrastructural.
 - Treat surprising wins as suspect until replicated.
+- For redesign experiments, compare against the nearest matched raw-pixel baseline, not just the global best number.
+- If a redesign helps the spectral story but not accuracy, log that explicitly rather than flattening everything into one scalar metric.
 
 ## Publication bar for Task D
 
@@ -75,3 +93,10 @@ Task D starts to look publication-worthy only if we can support one of these cla
 - Spectral behavior on CIFAR-10 reveals a strong, reproducible contrast with MNIST/Fashion-MNIST and leads to a concrete insight.
 
 Anything weaker is course progress, not paper progress.
+
+## Immediate protocol for the current stage
+
+- Treat `cifar10_completion_mps` as the completed raw-pixel reference.
+- Treat `cifar10_locality_mps` as the first redesign reference.
+- The next locality experiments should change one structural variable at a time, such as pooling strength, while keeping the training budget fixed.
+- Do not return to scalar hyperparameter tuning unless a redesign result makes that newly relevant.

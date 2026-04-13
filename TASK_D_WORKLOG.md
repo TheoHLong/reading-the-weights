@@ -40,6 +40,7 @@ This file records all Task D changes to Kai's code, all new code additions, envi
 - `configs/cifar10_headline_mps.yaml`
 - `configs/cifar10_completion_mps.yaml`
 - `configs/cifar10_locality_mps.yaml`
+- `configs/cifar10_locality4_mps.yaml`
 - `configs/mnist_pilot_mps.yaml`
 - `Dockerfile`
 - `.dockerignore`
@@ -147,6 +148,20 @@ This file records all Task D changes to Kai's code, all new code additions, envi
     - full rank `512` accuracy `0.4200`
   - Interpretation: this first locality-preserving redesign modestly steepens the truncation curve relative to the matched 25-epoch raw-pixel baseline.
 
+- CIFAR-10 stronger locality-preserving redesign, local `uv` environment, config `configs/cifar10_locality4_mps.yaml`
+  - Command: `.venv/bin/python scripts/train_baseline.py --config configs/cifar10_locality4_mps.yaml`
+  - Hardware: `mps`
+  - Run name: `cifar10_locality4_mps_20260412-231256`
+  - Epochs: `25`
+  - Best val accuracy: `0.4326`
+  - Test accuracy at best validation checkpoint: `0.4399`
+  - Truncation summary:
+    - rank `16` accuracy `0.3924`
+    - rank `32` accuracy `0.4290`
+    - rank `64` accuracy `0.4402`
+    - full rank `512` accuracy `0.4399`
+  - Interpretation: stronger locality bias gives the best redesign result so far and nearly matches the 50-epoch raw-pixel baseline in only 25 epochs.
+
 - CIFAR-10 width ablation, local `uv` environment, config `configs/cifar10_width1024_mps.yaml`
   - Command: `.venv/bin/python scripts/train_baseline.py --config configs/cifar10_width1024_mps.yaml`
   - Hardware: `mps`
@@ -195,6 +210,7 @@ This file records all Task D changes to Kai's code, all new code additions, envi
 - Local CIFAR-10 lower-weight-decay ablation result: passed
 - Local CIFAR-10 completion baseline result: passed
 - Local CIFAR-10 locality-preserving redesign result: passed
+- Local CIFAR-10 stronger locality-preserving redesign result: passed
 
 ### Notes
 
@@ -218,3 +234,7 @@ This file records all Task D changes to Kai's code, all new code additions, envi
   - At matched 25-epoch budget, locality-preserving preprocessing slightly improves the truncation curve.
   - This is not yet a decisive accuracy win over the best raw-pixel run, but it is the first structurally meaningful positive signal.
   - The next step should expand the locality-preserving family rather than reverting to scalar tuning.
+- Stronger redesign read:
+  - The `4x4` pooling variant is substantially better than the first `2x2` locality run on both truncation behavior and test accuracy.
+  - At rank `64`, it effectively reaches full-rank performance.
+  - This is now the strongest local evidence that CIFAR-10 benefits from locality-preserving bias under the same decomposition framework.
