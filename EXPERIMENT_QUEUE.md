@@ -26,7 +26,7 @@ This file tracks pending, running, and completed local experiments for Task D.
 
 - `locality-redesign`
   - Goal: test whether fixed locality-preserving preprocessing steepens the CIFAR truncation curve
-  - Status: first `2x2` redesign promising; stronger `4x4` redesign currently strongest result
+  - Status: first `2x2` redesign promising; stronger `4x4` redesign replicated successfully across two seeds
 
 ## Deferred until baseline quality improves
 
@@ -41,4 +41,5 @@ This file tracks pending, running, and completed local experiments for Task D.
 - First width and weight-decay ablations did not materially change the conclusion.
 - First locality-preserving redesign slightly steepens the truncation curve at matched 25-epoch budget.
 - Stronger `4x4` pooling gives the best redesign result so far, with rank-32/64 performance much closer to full-rank accuracy.
-- The next iteration should prioritize replication and careful refinement of locality-preserving variants over more scalar hyperparameter tuning.
+- Replication indicates the `4x4` locality effect is stable enough to support a substantive team update.
+- The next iteration should prioritize careful refinement of locality-preserving variants over more scalar hyperparameter tuning.

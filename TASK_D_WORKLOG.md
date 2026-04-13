@@ -41,6 +41,7 @@ This file records all Task D changes to Kai's code, all new code additions, envi
 - `configs/cifar10_completion_mps.yaml`
 - `configs/cifar10_locality_mps.yaml`
 - `configs/cifar10_locality4_mps.yaml`
+- `configs/cifar10_locality4_seed123_mps.yaml`
 - `configs/mnist_pilot_mps.yaml`
 - `Dockerfile`
 - `.dockerignore`
@@ -162,6 +163,20 @@ This file records all Task D changes to Kai's code, all new code additions, envi
     - full rank `512` accuracy `0.4399`
   - Interpretation: stronger locality bias gives the best redesign result so far and nearly matches the 50-epoch raw-pixel baseline in only 25 epochs.
 
+- CIFAR-10 stronger locality-preserving redesign replication, local `uv` environment, config `configs/cifar10_locality4_seed123_mps.yaml`
+  - Command: `.venv/bin/python scripts/train_baseline.py --config configs/cifar10_locality4_seed123_mps.yaml`
+  - Hardware: `mps`
+  - Run name: `cifar10_locality4_seed123_mps_20260412-231948`
+  - Epochs: `25`
+  - Best val accuracy: `0.4360`
+  - Test accuracy at best validation checkpoint: `0.4436`
+  - Truncation summary:
+    - rank `16` accuracy `0.3936`
+    - rank `32` accuracy `0.4324`
+    - rank `64` accuracy `0.4434`
+    - full rank `512` accuracy `0.4436`
+  - Interpretation: the `4x4` locality result replicates across seeds and remains sharply more compressible than the raw-pixel baseline.
+
 - CIFAR-10 width ablation, local `uv` environment, config `configs/cifar10_width1024_mps.yaml`
   - Command: `.venv/bin/python scripts/train_baseline.py --config configs/cifar10_width1024_mps.yaml`
   - Hardware: `mps`
@@ -211,6 +226,7 @@ This file records all Task D changes to Kai's code, all new code additions, envi
 - Local CIFAR-10 completion baseline result: passed
 - Local CIFAR-10 locality-preserving redesign result: passed
 - Local CIFAR-10 stronger locality-preserving redesign result: passed
+- Local CIFAR-10 stronger locality-preserving redesign replication result: passed
 
 ### Notes
 
@@ -238,3 +254,7 @@ This file records all Task D changes to Kai's code, all new code additions, envi
   - The `4x4` pooling variant is substantially better than the first `2x2` locality run on both truncation behavior and test accuracy.
   - At rank `64`, it effectively reaches full-rank performance.
   - This is now the strongest local evidence that CIFAR-10 benefits from locality-preserving bias under the same decomposition framework.
+- Replication read:
+  - The `4x4` locality effect holds across two seeds.
+  - Both seeds reach near-full-rank performance by rank `64`.
+  - This is now strong enough to support a substantive team update about Task D completion plus redesign evidence.
