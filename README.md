@@ -88,7 +88,7 @@ Below is the interface contract for the core modules. Downstream tasks should on
 
 | Symbol | Description |
 |--------|-------------|
-| `build_image_dataloaders(dataset_cfg, train_cfg)` | Returns a `DatasetBundle(train_loader, test_loader, input_shape, num_classes)`. Currently supports `mnist` and `fashion_mnist`. |
+| `build_image_dataloaders(dataset_cfg, train_cfg)` | Returns a `DatasetBundle(train_loader, val_loader, test_loader, input_shape, num_classes)`. Currently supports `mnist` and `fashion_mnist`. |
 
 ### train.py
 

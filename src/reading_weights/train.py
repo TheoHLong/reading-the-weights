@@ -45,6 +45,8 @@ def evaluate(
 
 def train_image_experiment(config: dict) -> dict[str, Path]:
     set_seed(int(config['seed']))
+    config.setdefault('train', {})
+    config['train'].setdefault('split_seed', int(config['seed']))
 
     dataset_bundle = build_image_dataloaders(config['dataset'], config['train'])
     device = resolve_device(config['train'].get('device', 'auto'))
@@ -103,7 +105,7 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
         train_acc = running_correct / running_examples
         val_loss, val_acc = evaluate(
             model,
-            dataset_bundle.test_loader,
+            dataset_bundle.val_loader,
             criterion,
             device,
             max_batches=max_eval_batches,
