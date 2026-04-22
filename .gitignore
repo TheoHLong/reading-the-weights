@@ -24,6 +24,7 @@ results/metrics/*
 !results/metrics/.gitkeep
 results/truncation/*
 wandb/
+report_assets/.mplconfig/
 
 # Editor
 .vscode/
