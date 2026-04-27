@@ -1,0 +1,29 @@
+experiment_name: cifar10_baseline
+seed: 42
+output_dir: results/metrics
+checkpoint_dir: checkpoints
+
+dataset:
+  name: cifar10
+  root: data/raw
+  image_size: 32
+  channels: 3
+  num_classes: 10
+
+model:
+  d_input: 3072
+  d_hidden: 512
+  n_layer: 1
+  d_output: 10
+  bias: false
+  residual: false
+
+train:
+  epochs: 50
+  batch_size: 256
+  lr: 0.001
+  wd: 0.01
+  num_workers: 2
+  pin_memory: true
+  device: auto
+  val_fraction: 0.1

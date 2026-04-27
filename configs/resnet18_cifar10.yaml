@@ -1,0 +1,25 @@
+experiment_name: resnet18_cifar10
+seed: 42
+output_dir: results/metrics
+checkpoint_dir: checkpoints
+
+dataset:
+  name: cifar10
+  root: data/raw
+  image_size: 32
+  channels: 3
+  num_classes: 10
+
+guide:
+  architecture: cifar_resnet18
+
+train:
+  epochs: 200
+  batch_size: 128
+  lr: 0.1
+  momentum: 0.9
+  wd: 0.0005
+  num_workers: 2
+  pin_memory: true
+  device: auto
+  val_fraction: 0.1
