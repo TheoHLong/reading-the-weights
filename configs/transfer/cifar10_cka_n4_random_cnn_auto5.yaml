@@ -1,0 +1,42 @@
+experiment_name: cifar10_cka_n4_random_cnn_auto5
+seed: 42
+output_dir: results/metrics
+checkpoint_dir: checkpoints
+
+dataset:
+  name: cifar10
+  root: data/raw
+  image_size: 32
+  channels: 3
+  num_classes: 10
+
+model:
+  d_input: 3072
+  d_hidden: 512
+  n_layer: 4
+  d_output: 10
+  bias: false
+  residual: true
+  gate: silu
+
+guide:
+  architecture: cifar_resnet18
+
+train:
+  epochs: 75
+  batch_size: 256
+  lr: 0.0003
+  wd: 0.01
+  num_workers: 2
+  pin_memory: true
+  device: auto
+  val_fraction: 0.1
+
+transfer:
+  method: cka
+  teacher_source: random
+  guide_seed: 42
+  alpha: 3.0
+  reduction: mean
+  teacher_layers: [conv1, layer1, layer2, layer3, layer4]
+  student_layers: [embed, blocks.0, blocks.1, blocks.2, blocks.3]

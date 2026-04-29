@@ -4,12 +4,12 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from _bootstrap import ensure_src_on_path
+from _bootstrap import ensure_project_on_path
 
-ensure_src_on_path()
+ensure_project_on_path()
 
-from reading_weights.config import load_config
-from reading_weights.train import train_image_experiment
+from src.config import load_config
+from src.train import train_image_experiment
 
 
 def main() -> None:
@@ -17,7 +17,7 @@ def main() -> None:
     parser.add_argument(
         '--config',
         type=Path,
-        default=Path('configs/mnist_baseline.yaml'),
+        default=Path('configs/baselines/mnist_baseline.yaml'),
         help='Path to the YAML config file.',
     )
     args = parser.parse_args()

@@ -6,13 +6,29 @@ from pathlib import Path
 
 import torch
 
-from _bootstrap import ensure_src_on_path
+from _bootstrap import ensure_project_on_path
 
-ensure_src_on_path()
+ensure_project_on_path()
 
-from reading_weights.decomposition import decompose_bilinear_model
-from reading_weights.model import build_image_classifier
-from reading_weights.utils import ensure_dir, load_checkpoint, write_json
+from src.decomposition import decompose_bilinear_model
+from src.model import build_image_classifier
+from src.utils import ensure_dir, load_checkpoint, write_json
+
+
+def validate_checkpoint_for_decomposition(payload: dict) -> dict:
+    config = payload.get('config')
+    if config is None:
+        raise ValueError('Checkpoint is missing config; cannot reconstruct a bilinear model for decomposition.')
+
+    if 'model' not in config:
+        model_type = payload.get('model_type', 'unknown')
+        raise ValueError(
+            'analyze_checkpoint.py only supports bilinear student checkpoints with config["model"]. '
+            f'Got checkpoint type {model_type!r}. Teacher checkpoints are not decomposable; '
+            'use scripts/eval_checkpoint.py for teacher evaluation instead.'
+        )
+
+    return config
 
 
 def main() -> None:
@@ -27,7 +43,7 @@ def main() -> None:
     args = parser.parse_args()
 
     payload = load_checkpoint(args.checkpoint, map_location='cpu')
-    config = payload['config']
+    config = validate_checkpoint_for_decomposition(payload)
     model = build_image_classifier(config['model'], seed=int(config['seed']))
     model.load_state_dict(payload['model_state_dict'])
     model.eval()

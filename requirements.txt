@@ -2,6 +2,7 @@ einops
 jaxtyping
 numpy
 pandas
+pillow
 pyyaml
 torch
 torchvision

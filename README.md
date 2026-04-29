@@ -1,124 +1,146 @@
 # Reading the Weights
 
-Task A workspace for the CS7643 final project on bilinear MLP weight interpretability.
+CS7643 final project workspace for bilinear MLP weight interpretability.
 
-## Scope
+The project narrative is now:
 
-This repository currently focuses on Task A:
-
-- implement the bilinear layer forward pass
-- implement bilinear tensor construction and symmetrization
-- implement the eigendecomposition pipeline
-- implement the training framework
-- train baseline models on MNIST and Fashion-MNIST
+1. Reproduce the bilinear MLP weight-reading pipeline on MNIST and Fashion-MNIST.
+2. Extend the same pipeline to CIFAR-10 as a harder natural-image stress test.
+3. Study whether KD or CKA transfer changes bilinear student training behavior and weight structure.
 
 ## Layout
 
-- `src/reading_weights/model.py`: bilinear layer and baseline classifier
-- `src/reading_weights/decomposition.py`: tensor construction, symmetrization, eigendecomposition
-- `src/reading_weights/data.py`: MNIST and Fashion-MNIST dataloaders
-- `src/reading_weights/train.py`: training loop and checkpoint logic
-- `scripts/`: three runnable entrypoints plus the small path bootstrap helper
-- `configs/`: MNIST and Fashion-MNIST baseline configs
+- `src/`: importable Python package.
+- `scripts/`: runnable entrypoints.
+- `configs/`: experiment configs.
+- `notebooks/`: Colab/local notebooks.
+- `docs/handoffs/`: task handoff notes.
+- `docs/plans/`: implementation plans and experiment notes.
+- `checkpoints/`: generated model checkpoints, ignored by git except `.gitkeep`.
+- `results/`: generated metrics, analysis artifacts, adversarial outputs, and diagnostics, ignored by git except `.gitkeep`.
 
-## Artifact contract
+## Main Commands
 
-Each training run should produce:
+Use the project environment that has PyTorch installed. On the current machine:
 
-- a best checkpoint in `checkpoints/`
-- a latest checkpoint in `checkpoints/`
-- per-epoch metrics in `results/metrics/<run_name>/metrics.csv`
-- a run summary in `results/metrics/<run_name>/summary.json`
+```bash
+/Users/longtenghai/opt/anaconda3/envs/web-env/bin/python scripts/check_cka.py
+```
 
-Each analysis run should produce:
+Core replication:
+
+```bash
+python scripts/smoke_test.py --config configs/baselines/mnist_baseline.yaml
+python scripts/train_baseline.py --config configs/baselines/mnist_baseline.yaml
+python scripts/train_baseline.py --config configs/baselines/fmnist_baseline.yaml
+python scripts/analyze_checkpoint.py --checkpoint checkpoints/<best-run>.pt
+```
+
+CIFAR-10 baseline and teacher:
+
+```bash
+python scripts/train_baseline.py --config configs/baselines/cifar10_baseline.yaml
+python scripts/train_guide.py --config configs/guides/resnet18_cifar10.yaml
+python scripts/eval_checkpoint.py --checkpoint checkpoints/resnet18_cifar10_teacher.pt
+```
+
+Transfer runs:
+
+```bash
+python scripts/train_transfer.py --config configs/transfer/cifar10_kd.yaml
+python scripts/train_transfer.py --config configs/transfer/cifar10_cka.yaml
+python scripts/train_transfer.py --config configs/transfer/cifar10_cka_n4.yaml
+```
+
+Adversarial masks:
+
+```bash
+python scripts/run_adversarial.py --checkpoint checkpoints/mnist_baseline_20260324-025128.pt
+python scripts/run_adversarial.py --checkpoint checkpoints/fmnist_baseline_20260324-025914.pt
+python scripts/run_adversarial.py --checkpoint checkpoints/cifar10_baseline_20260427-215646.pt
+```
+
+## Current Results
+
+| Experiment | Best val acc | Notes |
+| --- | ---: | --- |
+| MNIST bilinear baseline | 97.99% | Core replication checkpoint exists. |
+| Fashion-MNIST bilinear baseline | 89.09% | Core replication checkpoint exists. |
+| CIFAR-10 1-layer bilinear baseline | 44.88% | Raw-pixel natural-image stress test. |
+| CIFAR-10 ResNet-18 guide | 95.98% | Teacher checkpoint alias: `checkpoints/resnet18_cifar10_teacher.pt`. |
+| CIFAR-10 KD student | 45.10% | KD gives little improvement over 1-layer baseline. |
+| CIFAR-10 1-layer CKA student | 46.62% | Small but measurable improvement. |
+| CIFAR-10 4-layer CKA student | 61.60% | Strong training result; multi-layer decomposition is still future work. |
+
+## Artifact Contract
+
+Training runs write:
+
+- `checkpoints/<run_name>.pt`
+- `checkpoints/<run_name>_latest.pt`
+- `results/metrics/<run_name>/metrics.csv`
+- `results/metrics/<run_name>/summary.json`
+
+Analysis runs write:
 
 - `results/analysis/<checkpoint_name>/decomposition.pt`
 - `results/analysis/<checkpoint_name>/summary.json`
 
-## Main commands
+Adversarial runs write:
 
-```bash
-python scripts/smoke_test.py --config configs/mnist_baseline.yaml
-python scripts/train_baseline.py --config configs/mnist_baseline.yaml
-python scripts/train_baseline.py --config configs/fmnist_baseline.yaml
-python scripts/analyze_checkpoint.py --checkpoint checkpoints/<best-run>.pt
-```
+- `results/adversarial/<checkpoint_name>/fig7_panel.png`
+- `results/adversarial/<checkpoint_name>/success_curves.png`
+- `results/adversarial/<checkpoint_name>/masks.png`
+- `results/adversarial/<checkpoint_name>/attack_metrics.json`
+- `results/adversarial/<checkpoint_name>/masks.pt`
 
-## Workflow
+## Public APIs
 
-1. Run `python scripts/smoke_test.py --config configs/mnist_baseline.yaml`
-2. Train MNIST and Fashion-MNIST with `scripts/train_baseline.py`
-3. Export decomposition artifacts with `scripts/analyze_checkpoint.py`
-4. Save large artifacts to Drive, not to git
-
-## API reference (for Task B/C/D/E/F)
-
-Below is the interface contract for the core modules. Downstream tasks should only depend on these public APIs.
-
-### model.py
+### `src.model`
 
 | Symbol | Description |
-|--------|-------------|
-| `BilinearImageClassifier(d_input, d_hidden, d_output, n_layer, bias, residual, seed)` | The bilinear MLP classifier. `forward(x)` takes `[B, C, H, W]` images and returns `[B, d_output]` logits. |
-| `model.embedding_weight` | Property. Returns detached embed weight `[d_hidden, d_input]`. |
-| `model.output_weight` | Property. Returns detached head weight `[d_output, d_hidden]`. |
-| `model.bilinear_weights` | Property. Returns `[n_layer, 2, d_hidden, d_hidden]` — stacked left/right weight pairs. |
-| `build_image_classifier(model_cfg, seed)` | Factory function. Takes the `config['model']` dict and returns a `BilinearImageClassifier`. |
+| --- | --- |
+| `BilinearImageClassifier(...)` | Bilinear MLP image classifier. `forward(x)` accepts `[B, C, H, W]` images and returns logits. |
+| `build_image_classifier(model_cfg, seed)` | Factory for configs. |
+| `model.embedding_weight` | Detached embedding weight `[d_hidden, d_input]`. |
+| `model.output_weight` | Detached head weight `[d_output, d_hidden]`. |
+| `model.bilinear_weights` | Stacked left/right bilinear weights `[n_layer, 2, d_hidden, d_hidden]`. |
 
-### decomposition.py
-
-| Symbol | Description |
-|--------|-------------|
-| `build_bilinear_tensor(model)` | Folds the bilinear block and classifier head into one tensor. Returns `[d_output, d_hidden, d_hidden]`. Single-layer models only. |
-| `symmetrize_bilinear_tensor(T)` | Returns `(T + T.mT) / 2`. Same shape. |
-| `decompose_bilinear_model(model)` | **Main entry point.** Runs the full pipeline and returns a `DecompositionArtifacts` dataclass. |
-| `project_eigenvectors_to_input(eigvecs, embed_w)` | Maps eigenvectors from hidden space back to input pixel space. |
-
-**`DecompositionArtifacts` fields (all Tensors):**
-
-| Field | Shape (MNIST example) | Description |
-|-------|----------------------|-------------|
-| `bilinear_tensor` | `[10, 256, 256]` | Raw Q_c matrices before symmetrization. |
-| `symmetrized_tensor` | `[10, 256, 256]` | (Q + Qᵀ)/2 — symmetric matrices for eigendecomposition. |
-| `eigenvalues` | `[10, 256]` | Eigenvalues per class, ascending order. **Last = largest.** |
-| `eigenvectors_hidden` | `[10, 256, 256]` | Eigenvectors in hidden space. Column `[:,  :, k]` pairs with `eigenvalues[:, k]`. |
-| `eigenvectors_input` | `[10, 256, 784]` | Eigenvectors projected to input pixel space. Reshape `[784]` → `[28, 28]` to visualize. |
-
-### data.py
+### `src.decomposition`
 
 | Symbol | Description |
-|--------|-------------|
-| `build_image_dataloaders(dataset_cfg, train_cfg)` | Returns a `DatasetBundle(train_loader, val_loader, test_loader, input_shape, num_classes)`. Currently supports `mnist` and `fashion_mnist`. |
+| --- | --- |
+| `build_bilinear_tensor(model)` | Builds class tensors `[d_output, d_hidden, d_hidden]`. Single-layer models only. |
+| `symmetrize_bilinear_tensor(T)` | Returns `(T + T.mT) / 2`. |
+| `decompose_bilinear_model(model)` | Main decomposition entrypoint. |
+| `project_eigenvectors_to_input(eigvecs, embed_w)` | Projects hidden-space eigenvectors back to pixels. |
 
-### train.py
-
-| Symbol | Description |
-|--------|-------------|
-| `train_image_experiment(config)` | Runs the full training loop. Returns a dict with paths: `run_dir`, `metrics_path`, `best_checkpoint_path`, `latest_checkpoint_path`. |
-| `evaluate(model, loader, criterion, device)` | Returns `(avg_loss, accuracy)`. Already wrapped in `@torch.no_grad()`. |
-
-### utils.py
+### `src.data`
 
 | Symbol | Description |
-|--------|-------------|
-| `load_checkpoint(path, map_location='cpu')` | Loads a `.pt` checkpoint. Returns dict with keys: `model_state_dict`, `config`, `epoch`, `metrics`. |
-| `resolve_device(name)` | Resolves `'auto'` to `cuda` / `mps` / `cpu`. |
-| `set_seed(seed)` | Seeds Python, NumPy, and PyTorch for reproducibility. |
+| --- | --- |
+| `build_image_dataloaders(dataset_cfg, train_cfg)` | Returns train/val/test loaders plus shape metadata. Supports `mnist`, `fashion_mnist`, and `cifar10`. |
+| `CIFAR10_MEAN`, `CIFAR10_STD` | Shared CIFAR-10 normalization constants for student and guide models. |
 
-### Checkpoint format
+### `src.transfer`
 
-```python
-{
-    'model_state_dict': OrderedDict,   # pass to model.load_state_dict()
-    'config':           dict,          # the full YAML config used for training
-    'epoch':            int,           # epoch number when saved
-    'metrics':          dict,          # {'epoch', 'train_loss', 'train_acc', 'val_loss', 'val_acc', 'lr'}
-}
-```
+| Symbol | Description |
+| --- | --- |
+| `kd_loss(...)` | Knowledge-distillation objective. |
+| `train_kd_experiment(config)` | Train a bilinear student with teacher logits. |
+| `train_cka_experiment(config)` | Train a bilinear student with CKA representational alignment. |
+| `cka_loss(...)` | Layer-pair CKA distance reducer. |
 
-## Baseline results
+### `src.adversarial`
 
-| Dataset | Best val acc | Best epoch | Checkpoint |
-|---------|-------------|------------|------------|
-| MNIST | 97.99% | 38 | `mnist_baseline_20260324-025128.pt` |
-| Fashion-MNIST | 89.09% | 94 | `fmnist_baseline_20260324-025914.pt` |
+| Symbol | Description |
+| --- | --- |
+| `compute_adversarial_masks(...)` | Builds Fig. 7-style pseudoinverse masks. |
+| `compute_permuted_masks(...)` | Random-permutation baseline preserving mask distribution and norm. |
+| `evaluate_attacks(...)` | Sweeps perturbation magnitudes and reports accuracy and target-hit rates. |
+
+## Limitations
+
+- Decomposition currently supports single-layer bilinear students only. Deep bilinear checkpoints can be evaluated, but not decomposed yet.
+- The strongest 4-layer CKA result should be reported as a training/optimization observation until multi-layer decomposition is implemented.
+- Random/noise guide variants also perform well, so CKA results should be interpreted as representational regularization evidence, not as a clean claim that trained ResNet semantics transferred.

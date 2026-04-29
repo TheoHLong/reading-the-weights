@@ -11,15 +11,15 @@ from torch.optim import SGD
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from tqdm.auto import tqdm
 
-from _bootstrap import ensure_src_on_path
+from _bootstrap import ensure_project_on_path
 
-ensure_src_on_path()
+ensure_project_on_path()
 
-from reading_weights.config import load_config
-from reading_weights.data import build_image_dataloaders
-from reading_weights.guide import GUIDE_ARCHITECTURE, build_guide
-from reading_weights.train import evaluate
-from reading_weights.utils import ensure_dir, resolve_device, set_seed, timestamp, write_json
+from src.config import load_config
+from src.data import build_image_dataloaders
+from src.guide import GUIDE_ARCHITECTURE, build_guide
+from src.train import evaluate
+from src.utils import ensure_dir, resolve_device, set_seed, timestamp, write_json
 
 
 def train_guide_experiment(config: dict) -> dict[str, Path]:
@@ -152,7 +152,7 @@ def main() -> None:
     parser.add_argument(
         '--config',
         type=Path,
-        default=Path('configs/resnet18_cifar10.yaml'),
+        default=Path('configs/guides/resnet18_cifar10.yaml'),
         help='Path to the YAML config file.',
     )
     args = parser.parse_args()

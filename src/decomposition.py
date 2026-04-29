@@ -6,7 +6,7 @@ import torch
 from einops import einsum
 from torch import Tensor
 
-from reading_weights.model import BilinearImageClassifier
+from src.model import BilinearImageClassifier
 
 
 @dataclass

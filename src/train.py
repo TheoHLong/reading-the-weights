@@ -4,43 +4,49 @@ from pathlib import Path
 
 import pandas as pd
 import torch
-import torch.nn.functional as F
-from torch import Tensor, nn
+from torch import nn
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from tqdm.auto import tqdm
 
-from reading_weights.data import build_image_dataloaders
-from reading_weights.guide import load_frozen_teacher
-from reading_weights.model import build_image_classifier
-from reading_weights.train import evaluate
-from reading_weights.utils import ensure_dir, resolve_device, set_seed, timestamp, write_json
+from src.data import build_image_dataloaders
+from src.model import build_image_classifier
+from src.utils import ensure_dir, resolve_device, set_seed, timestamp, write_json
 
 
-def kd_loss(
-    student_logits: Tensor,
-    teacher_logits: Tensor,
-    labels: Tensor,
-    alpha: float,
-    temperature: float,
-) -> Tensor:
-    ce = F.cross_entropy(student_logits, labels)
-    kl = F.kl_div(
-        F.log_softmax(student_logits / temperature, dim=-1),
-        F.softmax(teacher_logits / temperature, dim=-1),
-        reduction='batchmean',
-    )
-    return alpha * ce + (1.0 - alpha) * (temperature**2) * kl
+@torch.no_grad()
+def evaluate(
+    model: nn.Module,
+    loader,
+    criterion: nn.Module,
+    device: torch.device,
+    max_batches: int | None = None,
+) -> tuple[float, float]:
+    model.eval()
+    total_loss = 0.0
+    total_correct = 0
+    total_examples = 0
+
+    for batch_idx, (x, y) in enumerate(loader, start=1):
+        x = x.to(device, non_blocking=True)
+        y = y.to(device, non_blocking=True)
+        logits = model(x)
+        loss = criterion(logits, y)
+
+        total_loss += loss.item() * y.size(0)
+        total_correct += (logits.argmax(dim=-1) == y).sum().item()
+        total_examples += y.size(0)
+
+        if max_batches is not None and batch_idx >= max_batches:
+            break
+
+    return total_loss / total_examples, total_correct / total_examples
 
 
-def train_kd_experiment(config: dict) -> dict[str, Path]:
+def train_image_experiment(config: dict) -> dict[str, Path]:
     set_seed(int(config['seed']))
     config.setdefault('train', {})
     config['train'].setdefault('split_seed', int(config['seed']))
-
-    transfer_cfg = config.get('transfer', {})
-    if transfer_cfg.get('method') != 'kd':
-        raise ValueError("transfer.method must be 'kd' for train_kd_experiment().")
 
     dataset_bundle = build_image_dataloaders(config['dataset'], config['train'])
     device = resolve_device(config['train'].get('device', 'auto'))
@@ -48,18 +54,17 @@ def train_kd_experiment(config: dict) -> dict[str, Path]:
     max_eval_batches = config['train'].get('max_eval_batches')
     max_train_batches = None if max_train_batches in (None, 0) else int(max_train_batches)
     max_eval_batches = None if max_eval_batches in (None, 0) else int(max_eval_batches)
-    alpha = float(transfer_cfg.get('alpha', 0.5))
-    temperature = float(transfer_cfg.get('temperature', 4.0))
-
-    teacher = load_frozen_teacher(transfer_cfg['teacher_checkpoint'], device)
-    student = build_image_classifier(config['model'], seed=int(config['seed'])).to(device)
+    model = build_image_classifier(config['model'], seed=int(config['seed'])).to(device)
+    input_noise_std = float(config['train'].get('input_noise_std', 0.0))
 
     criterion = nn.CrossEntropyLoss()
     optimizer = AdamW(
-        student.parameters(),
+        model.parameters(),
         lr=float(config['train']['lr']),
         weight_decay=float(config['train']['wd']),
     )
+    # CosineAnnealingLR here is epoch-based by design; max_train_batches is only
+    # a smoke-test/debug limiter and does not redefine the scheduler timescale.
     scheduler = CosineAnnealingLR(optimizer, T_max=int(config['train']['epochs']))
 
     run_name = f"{config['experiment_name']}_{timestamp()}"
@@ -73,7 +78,7 @@ def train_kd_experiment(config: dict) -> dict[str, Path]:
     latest_checkpoint_path = checkpoint_dir / f'{run_name}_latest.pt'
 
     for epoch in tqdm(range(1, int(config['train']['epochs']) + 1), desc='training'):
-        student.train()
+        model.train()
         running_loss = 0.0
         running_correct = 0
         running_examples = 0
@@ -81,23 +86,17 @@ def train_kd_experiment(config: dict) -> dict[str, Path]:
         for batch_idx, (x, y) in enumerate(dataset_bundle.train_loader, start=1):
             x = x.to(device, non_blocking=True)
             y = y.to(device, non_blocking=True)
+            if input_noise_std > 0:
+                x = x + input_noise_std * torch.randn_like(x)
 
             optimizer.zero_grad(set_to_none=True)
-            with torch.no_grad():
-                teacher_logits = teacher(x)
-            student_logits = student(x)
-            loss = kd_loss(
-                student_logits,
-                teacher_logits,
-                y,
-                alpha=alpha,
-                temperature=temperature,
-            )
+            logits = model(x)
+            loss = criterion(logits, y)
             loss.backward()
             optimizer.step()
 
             running_loss += loss.item() * y.size(0)
-            running_correct += (student_logits.argmax(dim=-1) == y).sum().item()
+            running_correct += (logits.argmax(dim=-1) == y).sum().item()
             running_examples += y.size(0)
 
             if max_train_batches is not None and batch_idx >= max_train_batches:
@@ -108,7 +107,7 @@ def train_kd_experiment(config: dict) -> dict[str, Path]:
         train_loss = running_loss / running_examples
         train_acc = running_correct / running_examples
         val_loss, val_acc = evaluate(
-            student,
+            model,
             dataset_bundle.val_loader,
             criterion,
             device,
@@ -126,7 +125,7 @@ def train_kd_experiment(config: dict) -> dict[str, Path]:
         history.append(row)
 
         checkpoint_payload = {
-            'model_state_dict': student.state_dict(),
+            'model_state_dict': model.state_dict(),
             'config': config,
             'epoch': epoch,
             'metrics': row,
@@ -146,7 +145,6 @@ def train_kd_experiment(config: dict) -> dict[str, Path]:
             'run_name': run_name,
             'dataset': config['dataset']['name'],
             'device': str(device),
-            'teacher_checkpoint': str(transfer_cfg['teacher_checkpoint']),
             'best_val_acc': best_val_acc,
             'best_checkpoint': str(best_checkpoint_path),
             'latest_checkpoint': str(latest_checkpoint_path),

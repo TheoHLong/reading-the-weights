@@ -21,6 +21,10 @@ results/analysis/*
 !results/analysis/.gitkeep
 results/metrics/*
 !results/metrics/.gitkeep
+results/adversarial/*
+!results/adversarial/.gitkeep
+results/diagnostics/*
+!results/diagnostics/.gitkeep
 wandb/
 
 # Editor

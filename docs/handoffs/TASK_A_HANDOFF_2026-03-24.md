@@ -47,19 +47,19 @@ Training metrics:
 ## 4. Public interfaces you should rely on
 
 Model:
-- `src/reading_weights/model.py`
+- `src/model.py`
 - `build_image_classifier(model_cfg, seed)`
 
 Training:
-- `src/reading_weights/train.py`
+- `src/train.py`
 - `train_image_experiment(config)`
 
 Decomposition:
-- `src/reading_weights/decomposition.py`
+- `src/decomposition.py`
 - `decompose_bilinear_model(model)`
 
 Data:
-- `src/reading_weights/data.py`
+- `src/data.py`
 - `build_image_dataloaders(dataset_cfg, train_cfg)`
 
 ## 5. Ownership boundaries

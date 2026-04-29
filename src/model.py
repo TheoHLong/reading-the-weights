@@ -54,6 +54,7 @@ class BilinearImageClassifier(nn.Module):
         n_layer: int = 1,
         bias: bool = False,
         residual: bool = False,
+        gate: str | None = None,
         seed: int = 42,
     ) -> None:
         super().__init__()
@@ -62,7 +63,7 @@ class BilinearImageClassifier(nn.Module):
 
         self.embed = Linear(d_input, d_hidden, bias=False)
         self.blocks = nn.ModuleList([
-            Bilinear(d_hidden, d_hidden, bias=bias) for _ in range(n_layer)
+            Bilinear(d_hidden, d_hidden, bias=bias, gate=gate) for _ in range(n_layer)
         ])
         self.head = Linear(d_hidden, d_output, bias=False)
 
@@ -96,5 +97,6 @@ def build_image_classifier(model_cfg: dict, seed: int) -> BilinearImageClassifie
         n_layer=int(model_cfg['n_layer']),
         bias=bool(model_cfg['bias']),
         residual=bool(model_cfg['residual']),
+        gate=model_cfg.get('gate'),
         seed=seed,
     )
