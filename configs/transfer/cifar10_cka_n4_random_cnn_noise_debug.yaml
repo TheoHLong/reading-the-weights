@@ -17,7 +17,7 @@ model:
   d_output: 10
   bias: false
   residual: true
-  gate: silu
+  gate: null
 
 guide:
   architecture: cifar_resnet18

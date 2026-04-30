@@ -11,6 +11,7 @@ class Bilinear(nn.Linear):
 
     def __init__(self, d_in: int, d_out: int, bias: bool = False, gate: str | None = None) -> None:
         super().__init__(d_in, 2 * d_out, bias=bias)
+        self.gate_name = gate
         self.gate = {
             'relu': nn.ReLU(),
             'silu': nn.SiLU(),
@@ -60,6 +61,7 @@ class BilinearImageClassifier(nn.Module):
         super().__init__()
         torch.manual_seed(seed)
         self.residual = residual
+        self.gate = gate
 
         self.embed = Linear(d_input, d_hidden, bias=False)
         self.blocks = nn.ModuleList([

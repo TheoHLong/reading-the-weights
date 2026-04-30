@@ -22,7 +22,7 @@ model:
   d_output: 10
   bias: false
   residual: true
-  gate: silu
+  gate: null
 
 train:
   epochs: 75

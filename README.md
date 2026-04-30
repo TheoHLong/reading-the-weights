@@ -70,7 +70,8 @@ python scripts/run_adversarial.py --checkpoint checkpoints/cifar10_baseline_2026
 | CIFAR-10 ResNet-18 guide | 95.98% | Teacher checkpoint alias: `checkpoints/resnet18_cifar10_teacher.pt`. |
 | CIFAR-10 KD student | 45.10% | KD gives little improvement over 1-layer baseline. |
 | CIFAR-10 1-layer CKA student | 46.62% | Small but measurable improvement. |
-| CIFAR-10 4-layer CKA student | 61.60% | Strong training result; multi-layer decomposition is still future work. |
+| CIFAR-10 4-layer pure bilinear CKA student | pending rerun | Configs now use `gate: null` so this can become a multi-layer decomposition target. |
+| CIFAR-10 4-layer gated CKA student | 61.60% | Historical `gate: silu` run; useful as an optimization reference, not a bilinear decomposition target. |
 
 ## Artifact Contract
 
@@ -141,6 +142,7 @@ Adversarial runs write:
 
 ## Limitations
 
-- Decomposition currently supports single-layer bilinear students only. Deep bilinear checkpoints can be evaluated, but not decomposed yet.
-- The strongest 4-layer CKA result should be reported as a training/optimization observation until multi-layer decomposition is implemented.
+- Decomposition currently supports single-layer pure bilinear students only. Deep pure bilinear checkpoints can be evaluated, but not decomposed yet.
+- Any checkpoint trained with `gate != null` is excluded from weight-space bilinear decomposition because the block is no longer a pure quadratic bilinear map.
+- The previous strongest 4-layer CKA result used `gate: silu`, so it should be reported only as a training/optimization observation.
 - Random/noise guide variants also perform well, so CKA results should be interpreted as representational regularization evidence, not as a clean claim that trained ResNet semantics transferred.

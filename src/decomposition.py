@@ -28,6 +28,12 @@ class DecompositionArtifacts:
 
 
 def build_bilinear_tensor(model: BilinearImageClassifier) -> Tensor:
+    if getattr(model, 'gate', None) is not None:
+        raise ValueError(
+            'Weight-space bilinear decomposition requires pure bilinear blocks '
+            f'(gate=None), got gate={model.gate!r}.'
+        )
+
     if len(model.blocks) != 1:
         raise ValueError('Task A decomposition supports single-layer models only.')
 

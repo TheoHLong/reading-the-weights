@@ -18,12 +18,11 @@
 
 A single bilinear layer computes `(W_l x) ⊙ (W_r x)`, which is degree-2 in `x`. Stacking `n` layers naïvely gives a degree-`2^n` polynomial — for n=4 that's degree 16, for n=8 degree 256. **Pure stacked bilinears are pathologically hard to optimize.**
 
-Two stabilizers that the paper's MLP gets for free (BN+ReLU+Dropout) but we currently don't:
+The stabilizer that we keep for the decomposition path:
 
 1. **Residual connections** — `x = x + bilinear(x)` keeps each layer's contribution additive on top of an identity skip. The gradient highway is essential past depth ~2.
-2. **A gating non-linearity** — `silu(W_l x) ⊙ (W_r x)` is the SwiGLU-style construction used in modern Transformers. It tames the multiplicative blowup and gives smooth gradients.
 
-Our `Bilinear` class already supports both: `residual=True` is a flag on `BilinearImageClassifier`, and `gate='silu'` is an existing option on `Bilinear` (currently unused — `build_image_classifier` doesn't pass it).
+The `Bilinear` class supports optional gates (`relu`, `silu`, `gelu`), but those are **not** part of the decomposition track. Any gated checkpoint is treated as a non-decomposable ablation because it breaks the pure quadratic bilinear form.
 
 ### What more depth buys us for CKA
 
@@ -43,20 +42,26 @@ With `n_layer = N`, the student exposes `N + 1` natural CKA hookpoints: `embed`,
 | Setting | n_layer=1 (current) | n_layer ≥ 2 (this plan) | Why |
 |---------|---------------------|-------------------------|-----|
 | `residual` | `false` | **`true`** | Gradient highway. Without this, deep bilinear stacks vanish/explode within 1-2 epochs |
-| `gate` (in Bilinear) | unused (None) | **`'silu'`** (recommended) | SwiGLU-style gating tames multiplicative blowup. Optional if residual alone is enough but recommended for n_layer ≥ 4 |
+| `gate` (in Bilinear) | `null` | **`null`** | Required for pure bilinear weight decomposition |
 | `bias` | `false` | `false` (keep) | No reason to change; keeps weight surgery clean |
 
-### Tradeoff: pure bilinear (gate=None) vs. gated (gate='silu')
+### Pure bilinear requirement
 
-**Pure bilinear (gate=None):**
-- Pros: cleaner mathematical structure, closer to "read the weights" thesis, decomposition machinery (when extended) won't need to model the gate
-- Cons: Multiplicative depth blows up fast. Even with residual, n_layer ≥ 4 is iffy
+For this project path, `gate=None` is not just a preference. It is required so that each block remains:
 
-**Gated bilinear (gate='silu'):**
-- Pros: Trainable to arbitrary depth, matches how modern architectures actually use bilinear (SwiGLU, GLU)
-- Cons: Decomposition story gets more complicated when revisited later (gate is a separate non-linearity, eigenvectors of raw bilinear weights no longer fully describe the model's function)
+```text
+h_out = (W_l h_in) ⊙ (W_r h_in)
+```
 
-**Plan recommendation:** `residual=True, gate=None` for n_layer=2 (cleanest to interpret). If n_layer=2 fails to train cleanly, switch to `gate='silu'`. Promote `gate='silu'` to default for n_layer ≥ 4 regardless.
+Using `gate='silu'` changes the block to:
+
+```text
+h_out = silu(W_l h_in) ⊙ (W_r h_in)
+```
+
+That model may train better, but it is not a pure bilinear model and should not be used as the target for future multi-layer bilinear decomposition.
+
+**Plan recommendation:** `residual=True, gate=None` for every decomposition-target depth, including n_layer=4.
 
 ### Required code change in `model.py`
 
@@ -155,7 +160,7 @@ python scripts/train_baseline.py --config configs/baselines/cifar10_baseline_n2.
 If `train_loss` goes NaN, oscillates wildly, or `val_acc` stays at random (~10%):
 
 1. First try `lr: 0.0001` (5x lower)
-2. Then add `gate: silu` to the config
+2. Then reduce depth or increase warmup/epochs
 3. Then check that `residual: true` is actually being read (print model on init)
 
 Don't proceed to CKA until baseline n_layer=2 trains cleanly. Otherwise CKA-vs-baseline comparison is contaminated by training instability.
@@ -243,7 +248,7 @@ experiment_name: cifar10_baseline_n4
 model:
   n_layer: 4
   residual: true
-  gate: silu        # promote to silu at n_layer ≥ 4
+  gate: null        # keep pure bilinear for future decomposition
 train:
   lr: 0.0003        # lower again for deeper net
   epochs: 75        # more depth → more epochs to converge
@@ -287,7 +292,7 @@ Only attempt if Phase C shows clear depth-scaling of CKA gain.
 `configs/baselines/cifar10_baseline_n8.yaml` and `configs/transfer/cifar10_cka_n8.yaml`:
 
 - `n_layer: 8`
-- `gate: silu` (mandatory at this depth)
+- `gate: null` (required for decomposition; expect optimization to be difficult)
 - `residual: true` (mandatory)
 - `lr: 0.0001`
 - `epochs: 100`
@@ -295,7 +300,7 @@ Only attempt if Phase C shows clear depth-scaling of CKA gain.
 
 ### D.2 Risk acceptance
 
-n_layer=8 with multiplicative-degree dynamics is genuinely hard to train even with residual+gate. If training is unstable at this depth, that's an interesting finding in itself ("bilinear depth has practical limits") but not a blocker for the paper.
+n_layer=8 with multiplicative-degree dynamics is genuinely hard to train even with residuals. If training is unstable at this depth, that's an interesting finding in itself ("pure bilinear depth has practical limits") but not a blocker for the paper.
 
 ---
 
@@ -358,7 +363,7 @@ If these diagnostics fail at deeper n_layer, **stop and debug before scaling fur
 - **`lr` schedule across depths**: empirical recipe — halve `lr` each time `n_layer` doubles. n=1 used `lr=1e-3`; n=2 → `5e-4`; n=4 → `~3e-4`; n=8 → `1e-4`. Adjust based on early epoch behavior.
 - **`epochs` across depths**: deeper nets need more epochs to converge under the same lr schedule. n=2 stays at 50; n=4 bump to 75; n=8 bump to 100.
 - **`alpha` for CKA**: keep at 3.0 across depths. The mean reduction in `cka_loss` keeps scale stable. If you change to sum, recalibrate.
-- **`gate`**: null for n=1,2 (cleaner story); silu for n≥4 (training stability). Always use the same gate setting in matched baseline + CKA configs.
+- **`gate`**: null for all decomposition-target runs. Gated runs are ablations only and must not be used for weight-space bilinear decomposition.
 - **Initialization**: `BilinearImageClassifier.__init__` uses `torch.manual_seed(seed)` then default Linear init. This is generally OK for residual networks at moderate depth but may need scaled init at n_layer=8. Watch first-epoch train_loss — if it starts > log(num_classes) ≈ 2.3 by a lot, init is too large.
 
 ---
@@ -379,7 +384,7 @@ If these diagnostics fail at deeper n_layer, **stop and debug before scaling fur
 
 | Risk | Likelihood | Mitigation |
 |------|------------|------------|
-| Training unstable at n_layer ≥ 2 even with residual | Medium | Phase A is exactly the gate; don't proceed to CKA until baseline trains cleanly. Fallback: enable `gate='silu'` |
+| Training unstable at n_layer ≥ 2 even with residual | Medium | Lower LR, reduce depth, or increase epochs. Do not switch decomposition-target configs to a gate; gated runs are separate ablations |
 | CKA gain doesn't scale with depth | Medium | This is itself a finding ("bilinear depth alone doesn't unlock conv inductive bias"). Pivot to Path D (Ali's pooled architecture) |
 | Decomposition can't be extended in time for Task H | High (per user, this is deferred) | Keep n_layer=1 CKA checkpoint as the "Task H deliverable"; deep checkpoints are an "extra experiment" for the report's discussion section, not the main eigendecomposition figure |
 | Compute budget blows up | Medium at n_layer=8 | n_layer=8 is explicitly optional (Phase D). Stop at Phase C if time-constrained — the n=2 vs n=4 comparison alone tests the depth-scaling hypothesis |
