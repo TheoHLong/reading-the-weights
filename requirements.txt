@@ -1,5 +1,6 @@
 einops
 jaxtyping
+matplotlib
 numpy
 pandas
 pillow

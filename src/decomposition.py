@@ -9,6 +9,16 @@ from torch import Tensor
 from src.model import BilinearImageClassifier
 
 
+# Gates compatible with the paper's bilinear-style weight decomposition.
+# - None: pure bilinear MLP (Pearce et al. 2024).
+# - 'sqs': Signed Quadratic Shrink (Abohwo & Mosen 2025). The paper applies the
+#   same Pearce-style decomposition directly to the SQS-GLU weights, ignoring
+#   the σ non-linearity ("first-order linearization"). This is justified
+#   empirically by SQS being quasi-linear for |x| << 1 and is the procedure
+#   used to produce Figure 2 in the SQS paper.
+DECOMPOSABLE_GATES: frozenset[str | None] = frozenset({None, 'sqs'})
+
+
 @dataclass
 class DecompositionArtifacts:
     bilinear_tensor: Tensor
@@ -28,10 +38,14 @@ class DecompositionArtifacts:
 
 
 def build_bilinear_tensor(model: BilinearImageClassifier) -> Tensor:
-    if getattr(model, 'gate', None) is not None:
+    gate = getattr(model, 'gate', None)
+    if gate not in DECOMPOSABLE_GATES:
         raise ValueError(
-            'Weight-space bilinear decomposition requires pure bilinear blocks '
-            f'(gate=None), got gate={model.gate!r}.'
+            'Weight-space bilinear decomposition supports gate in '
+            f'{sorted(repr(g) for g in DECOMPOSABLE_GATES)}, got gate={gate!r}. '
+            "For SQS we follow the paper's first-order procedure: form A=W^T V "
+            'directly from the SQS-GLU weights, treating σ as identity. Gates '
+            'like ReLU/GELU/SiLU break this approximation and are not supported.'
         )
 
     if len(model.blocks) != 1:

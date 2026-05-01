@@ -42,6 +42,12 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    if not args.checkpoint.is_file():
+        raise FileNotFoundError(
+            f'Checkpoint path must be a file, got {args.checkpoint!s}. '
+            'If this came from a shell variable, check that the checkpoint glob matched.'
+        )
+
     payload = load_checkpoint(args.checkpoint, map_location='cpu')
     config = validate_checkpoint_for_decomposition(payload)
     model = build_image_classifier(config['model'], seed=int(config['seed']))

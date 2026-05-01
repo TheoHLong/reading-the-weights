@@ -6,18 +6,36 @@ from jaxtyping import Float
 from torch import Tensor, nn
 
 
+class SignedQuadraticShrink(nn.Module):
+    """Signed Quadratic Shrink gate with the paper's p=1 defaults."""
+
+    def __init__(self, c: float = 0.01, lambd: float = 0.5) -> None:
+        super().__init__()
+        self.c = c
+        self.lambd = lambd
+
+    def forward(self, x: Tensor) -> Tensor:
+        sign = torch.where(x >= 0, torch.ones_like(x), -torch.ones_like(x))
+        return (x - self.c * sign) / (1.0 + self.lambd * x * sign)
+
+
+def _build_gate(gate: str | None) -> nn.Module:
+    return {
+        'relu': nn.ReLU(),
+        'silu': nn.SiLU(),
+        'gelu': nn.GELU(),
+        'sqs': SignedQuadraticShrink(),
+        None: nn.Identity(),
+    }[gate]
+
+
 class Bilinear(nn.Linear):
     """Bilinear layer implemented as two linear projections multiplied elementwise."""
 
     def __init__(self, d_in: int, d_out: int, bias: bool = False, gate: str | None = None) -> None:
         super().__init__(d_in, 2 * d_out, bias=bias)
         self.gate_name = gate
-        self.gate = {
-            'relu': nn.ReLU(),
-            'silu': nn.SiLU(),
-            'gelu': nn.GELU(),
-            None: nn.Identity(),
-        }[gate]
+        self.gate = _build_gate(gate)
 
     def forward(self, x: Float[Tensor, '... d_in']) -> Float[Tensor, '... d_out']:
         left, right = super().forward(x).chunk(2, dim=-1)
@@ -35,12 +53,7 @@ class Bilinear(nn.Linear):
 class Linear(nn.Linear):
     def __init__(self, d_in: int, d_out: int, bias: bool = False, gate: str | None = None) -> None:
         super().__init__(d_in, d_out, bias=bias)
-        self.gate = {
-            'relu': nn.ReLU(),
-            'silu': nn.SiLU(),
-            'gelu': nn.GELU(),
-            None: nn.Identity(),
-        }[gate]
+        self.gate = _build_gate(gate)
 
     def forward(self, x: Float[Tensor, '... d_in']) -> Float[Tensor, '... d_out']:
         return self.gate(super().forward(x))

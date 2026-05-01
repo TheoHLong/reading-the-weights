@@ -25,7 +25,12 @@ results/adversarial/*
 !results/adversarial/.gitkeep
 results/diagnostics/*
 !results/diagnostics/.gitkeep
+results/figures/*
+!results/figures/.gitkeep
 wandb/
+
+# Local session notes
+HANDOFF.md
 
 # Editor
 .vscode/
