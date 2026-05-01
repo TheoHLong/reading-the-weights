@@ -66,3 +66,9 @@ def decompose_bilinear_model(model: BilinearImageClassifier) -> DecompositionArt
         eigenvectors_hidden=eigenvectors_hidden,
         eigenvectors_input=eigenvectors_input,
     )
+
+def spectral_effective_rank(eigenvalues: Tensor, eps: float = 1e-12) -> Tensor:
+    magnitudes = eigenvalues.abs()
+    weights = magnitudes / magnitudes.sum(dim=-1, keepdim=True).clamp_min(eps)
+    entropy = -(weights * weights.clamp_min(eps).log()).sum(dim=-1)
+    return entropy.exp()
