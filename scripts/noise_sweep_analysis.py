@@ -60,15 +60,14 @@ def train_model(config, noise_fn, device, epochs):
             loss.backward()
             optimizer.step()
         scheduler.step()
-    return model
+    return model, bundle.test_loader
 
 
-def eval_accuracy(model, config, device):
-    bundle = build_image_dataloaders(config['dataset'], config['train'])
+def eval_accuracy(model, test_loader, device):
     model.eval()
     correct, total = 0, 0
     with torch.no_grad():
-        for x, y in bundle.test_loader:
+        for x, y in test_loader:
             x, y = x.to(device), y.to(device)
             correct += (model(x).argmax(dim=-1) == y).sum().item()
             total += y.size(0)
@@ -94,7 +93,6 @@ def run_replication(
     dataset_name = config['dataset']['name']
     class_names = DIGIT_NAMES[dataset_name]
     device = resolve_device('auto')
-    epochs = int(config['train']['epochs'])
 
     out_dir = Path('results/analysis/noise_sweep') / dataset_name / noise_mode
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -105,8 +103,8 @@ def run_replication(
     for value in noise_values:
         print(f'training  mode={noise_mode}  value={value}')
         noise_fn = get_noise(noise_mode, value, device)
-        model = train_model(config, noise_fn, device, epochs=epochs)
-        acc = eval_accuracy(model, config, device)
+        model, test_loader = train_model(config, noise_fn, device, epochs=epochs)
+        acc = eval_accuracy(model, test_loader, device)
         artifacts = decompose_bilinear_model(model)
         all_artifacts.append(artifacts)
         all_accs.append(acc)
