@@ -48,6 +48,7 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
     set_seed(int(config['seed']))
     config.setdefault('train', {})
     config['train'].setdefault('split_seed', int(config['seed']))
+    config['train'].setdefault('l1_lambda', 0.0)
     device = resolve_device(config['train'].get('device', 'auto'))
     if device.type == 'cpu':
         config['train']['pin_memory'] = False
@@ -63,6 +64,7 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
     model = build_image_classifier(config['model'], seed=int(config['seed'])).to(device)
 
     criterion = nn.CrossEntropyLoss()
+    l1_lambda = float(config['train'].get('l1_lambda', 0.0))
     optimizer = AdamW(
         model.parameters(),
         lr=float(config['train']['lr']),
@@ -95,6 +97,11 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
             optimizer.zero_grad(set_to_none=True)
             logits = model(x)
             loss = criterion(logits, y)
+            if l1_lambda > 0.0:
+                l1_penalty = torch.zeros((), device=device)
+                for parameter in model.parameters():
+                    l1_penalty = l1_penalty + parameter.abs().sum()
+                loss = loss + l1_lambda * l1_penalty
             loss.backward()
             optimizer.step()
 

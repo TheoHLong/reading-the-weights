@@ -24,6 +24,25 @@ def parse_ranks(rank_arg: str, d_hidden: int) -> list[int]:
     return sorted({int(part.strip()) for part in rank_arg.split(',') if part.strip()})
 
 
+def compute_rank_efficiency(results: list[dict[str, float | int]]) -> dict[str, float | int | None]:
+    full_rank_acc = float(results[-1]['accuracy'])
+    thresholds = {
+        'rank_for_90pct_full': 0.90 * full_rank_acc,
+        'rank_for_95pct_full': 0.95 * full_rank_acc,
+        'rank_for_99pct_full': 0.99 * full_rank_acc,
+    }
+    rank_efficiency: dict[str, float | int | None] = {
+        'full_rank_accuracy': full_rank_acc,
+    }
+    for key, target_acc in thresholds.items():
+        reached_rank = next(
+            (int(row['rank']) for row in results if float(row['accuracy']) >= target_acc),
+            None,
+        )
+        rank_efficiency[key] = reached_rank
+    return rank_efficiency
+
+
 @torch.no_grad()
 def evaluate_truncated_spectrum(
     model,
@@ -124,7 +143,13 @@ def main() -> None:
     device = resolve_device(args.device)
 
     model_cpu = build_image_classifier(config['model'], seed=int(config['seed']))
-    model_cpu.load_state_dict(payload['model_state_dict'])
+    load_result = model_cpu.load_state_dict(payload['model_state_dict'], strict=False)
+    tolerated_missing = {'input_projection'}
+    if set(load_result.missing_keys) - tolerated_missing or load_result.unexpected_keys:
+        raise RuntimeError(
+            'Checkpoint state dict mismatch: '
+            f'missing={load_result.missing_keys}, unexpected={load_result.unexpected_keys}'
+        )
     model_cpu.eval()
     artifacts = decompose_bilinear_model(model_cpu)
     eigenvalues, eigenvectors = torch.linalg.eigh(artifacts.symmetrized_tensor)
@@ -140,6 +165,7 @@ def main() -> None:
         ranks=ranks,
         device=device,
     )
+    rank_efficiency = compute_rank_efficiency(results)
 
     output_dir = ensure_dir(args.output_dir / args.checkpoint.stem)
     results_path = output_dir / f'{args.split}_truncation.csv'
@@ -154,6 +180,7 @@ def main() -> None:
             'device': str(device),
             'ranks': ranks,
             'best_checkpoint_val_acc': float(payload['metrics']['val_acc']),
+            'rank_efficiency': rank_efficiency,
             'results_path': str(results_path),
         },
     )

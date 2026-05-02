@@ -29,7 +29,13 @@ def main() -> None:
     payload = load_checkpoint(args.checkpoint, map_location='cpu')
     config = payload['config']
     model = build_image_classifier(config['model'], seed=int(config['seed']))
-    model.load_state_dict(payload['model_state_dict'])
+    load_result = model.load_state_dict(payload['model_state_dict'], strict=False)
+    tolerated_missing = {'input_projection'}
+    if set(load_result.missing_keys) - tolerated_missing or load_result.unexpected_keys:
+        raise RuntimeError(
+            'Checkpoint state dict mismatch: '
+            f'missing={load_result.missing_keys}, unexpected={load_result.unexpected_keys}'
+        )
     model.eval()
 
     artifacts = decompose_bilinear_model(model)
