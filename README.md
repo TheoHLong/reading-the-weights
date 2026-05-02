@@ -86,6 +86,27 @@ python scripts/visualize_eigenvectors.py \
   --output results/figures/mnist_paper_sqs_eigenvectors.png
 ```
 
+Task B noise sweep and Task E training dynamics:
+
+```bash
+python scripts/noise_sweep_analysis.py --config configs/baselines/mnist_baseline.yaml --mode norm
+python scripts/noise_sweep_analysis.py --config configs/baselines/fmnist_baseline.yaml --mode std --values 0.0 0.1 0.2 0.3 0.5
+python scripts/train_with_dynamics.py --config configs/baselines/mnist_baseline.yaml --checkpoint-after 10
+```
+
+Note: the two scripts apply input noise with different semantics on purpose.
+
+- `noise_sweep_analysis.py` is an input-perturbation experiment. On unit-range
+  datasets (MNIST / Fashion-MNIST) it clamps noisy inputs back to [0, 1] so
+  each sample stays a valid image; CIFAR-10 (already normalized) is left
+  unclamped. Control via `--clamp {auto,unit,none}`.
+- `train_with_dynamics.py` reuses the project's existing `train.input_noise_std`
+  training-noise path and does **not** clamp by default. This preserves the
+  semantics of existing SQS / paper-style configs that train with input noise
+  as regularization. Pass `--clamp-noisy-inputs` (or set
+  `train.clamp_noisy_inputs: true` in the config) to match the Task B
+  perturbation semantics.
+
 ## Current Results
 
 | Experiment | Best val acc | Notes |
@@ -147,6 +168,7 @@ Adversarial runs write:
 | `symmetrize_bilinear_tensor(T)` | Returns `(T + T.mT) / 2`. |
 | `decompose_bilinear_model(model)` | Main decomposition entrypoint. |
 | `project_eigenvectors_to_input(eigvecs, embed_w)` | Projects hidden-space eigenvectors back to pixels. |
+| `spectral_effective_rank(eigenvalues)` | Entropy effective rank per class, used for training dynamics and noise sweep summaries. |
 
 ### `src.data`
 

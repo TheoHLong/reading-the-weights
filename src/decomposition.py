@@ -72,6 +72,13 @@ def project_eigenvectors_to_input(eigenvectors_hidden: Tensor, embedding_weight:
     )
 
 
+def spectral_effective_rank(eigenvalues: Tensor, eps: float = 1e-12) -> Tensor:
+    magnitudes = eigenvalues.abs()
+    weights = magnitudes / magnitudes.sum(dim=-1, keepdim=True).clamp_min(eps)
+    entropy = -(weights * weights.clamp_min(eps).log()).sum(dim=-1)
+    return entropy.exp()
+
+
 @torch.no_grad()
 def decompose_bilinear_model(model: BilinearImageClassifier) -> DecompositionArtifacts:
     bilinear_tensor = build_bilinear_tensor(model)
