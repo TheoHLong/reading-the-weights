@@ -21,16 +21,16 @@ from reading_weights.utils import ensure_dir
 CLASS_NAMES = {
     'mnist': [str(idx) for idx in range(10)],
     'fashion_mnist': [
-        'T-shirt',
-        'Trouser',
-        'Pullover',
-        'Dress',
-        'Coat',
-        'Sandal',
-        'Shirt',
-        'Sneaker',
-        'Bag',
-        'Ankle boot',
+        't-shirt',
+        'trouser',
+        'pullover',
+        'dress',
+        'coat',
+        'sandal',
+        'shirt',
+        'sneaker',
+        'bag',
+        'ankle boot',
     ],
     'cifar10': [
         'airplane',
@@ -135,16 +135,19 @@ def plot_top_eigenvectors(
             vmax = global_vmax
         vmin = -vmax
         if channels == 1:
-            ax.imshow(image, cmap='coolwarm', vmin=vmin, vmax=vmax)
+            ax.imshow(image, cmap='RdBu_r', vmin=vmin, vmax=vmax, interpolation='bilinear')
         else:
-            ax.imshow(image, cmap='coolwarm', vmin=vmin, vmax=vmax)
+            ax.imshow(image, cmap='RdBu_r', vmin=vmin, vmax=vmax, interpolation='bilinear')
         title_text = class_names[class_idx]
         if show_eigenvalue:
             title_text = f'{title_text}\nlambda={selected_eigenvalues[class_idx]:.3g}'
-        ax.set_title(title_text, fontsize=10, pad=8)
+        ax.set_title(title_text, fontsize=10, fontweight='bold', color='#1c3557', pad=8)
 
-    fig.suptitle(title, fontsize=14)
-    fig.tight_layout(rect=(0, 0, 1, 0.92), h_pad=1.8, w_pad=0.8)
+    if title:
+        fig.suptitle(title, fontsize=14)
+        fig.tight_layout(rect=(0, 0, 1, 0.92), h_pad=1.8, w_pad=0.8)
+    else:
+        fig.tight_layout(h_pad=1.8, w_pad=0.8)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=220)
     plt.close(fig)
@@ -174,7 +177,7 @@ def main() -> None:
         action='store_true',
         help='Include the selected eigenvalue in each subplot title.',
     )
-    parser.add_argument('--title', type=str, default='Top Eigenvector per Class', help='Figure title.')
+    parser.add_argument('--title', type=str, default='', help='Optional figure title.')
     args = parser.parse_args()
 
     ensure_dir(args.output.parent)

@@ -49,6 +49,7 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
     config.setdefault('train', {})
     config['train'].setdefault('split_seed', int(config['seed']))
     config['train'].setdefault('l1_lambda', 0.0)
+    config['train'].setdefault('train_input_noise_std', 0.0)
     device = resolve_device(config['train'].get('device', 'auto'))
     if device.type == 'cpu':
         config['train']['pin_memory'] = False
@@ -65,6 +66,7 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
 
     criterion = nn.CrossEntropyLoss()
     l1_lambda = float(config['train'].get('l1_lambda', 0.0))
+    train_input_noise_std = float(config['train'].get('train_input_noise_std', 0.0))
     optimizer = AdamW(
         model.parameters(),
         lr=float(config['train']['lr']),
@@ -93,6 +95,8 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
         for batch_idx, (x, y) in enumerate(dataset_bundle.train_loader, start=1):
             x = x.to(device, non_blocking=True)
             y = y.to(device, non_blocking=True)
+            if train_input_noise_std > 0.0:
+                x = x + train_input_noise_std * torch.randn_like(x)
 
             optimizer.zero_grad(set_to_none=True)
             logits = model(x)
