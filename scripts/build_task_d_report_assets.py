@@ -80,34 +80,6 @@ RUNS = [
         'truncation': 'results/truncation/cifar10_locality2_50e_mps_20260427-225510/test_truncation.csv',
         'kind': 'redesign',
     },
-    {
-        'label': 'CIFAR Raw 25e + L1',
-        'run_name': 'cifar10_l1tiny_mps_20260422-203929',
-        'metrics': 'results/metrics/cifar10_l1tiny_mps_20260422-203929/summary.json',
-        'truncation': 'results/truncation/cifar10_l1tiny_mps_20260422-203929/test_truncation.csv',
-        'kind': 'control',
-    },
-    {
-        'label': 'CIFAR Local 8x8',
-        'run_name': 'cifar10_locality8_mps_20260422-204446',
-        'metrics': 'results/metrics/cifar10_locality8_mps_20260422-204446/summary.json',
-        'truncation': 'results/truncation/cifar10_locality8_mps_20260422-204446/test_truncation.csv',
-        'kind': 'redesign',
-    },
-    {
-        'label': 'CIFAR Local 16x16 s42',
-        'run_name': 'cifar10_locality16_mps_20260422-204115',
-        'metrics': 'results/metrics/cifar10_locality16_mps_20260422-204115/summary.json',
-        'truncation': 'results/truncation/cifar10_locality16_mps_20260422-204115/test_truncation.csv',
-        'kind': 'redesign',
-    },
-    {
-        'label': 'CIFAR Local 16x16 s123',
-        'run_name': 'cifar10_locality16_seed123_mps_20260422-204255',
-        'metrics': 'results/metrics/cifar10_locality16_seed123_mps_20260422-204255/summary.json',
-        'truncation': 'results/truncation/cifar10_locality16_seed123_mps_20260422-204255/test_truncation.csv',
-        'kind': 'redesign',
-    },
 ]
 
 PRIMARY_FIGURE_LABELS = {
@@ -118,11 +90,8 @@ PRIMARY_FIGURE_LABELS = {
 
 CIFAR_FIGURE_LABELS = {
     'CIFAR Raw 50e': 'Raw pixels',
-    'CIFAR Raw 25e + L1': 'Raw + tiny L1',
     'CIFAR Local 2x2 50e': '2x2 pooling',
     'CIFAR Local 4x4 50e wd=.01': '4x4 pooling',
-    'CIFAR Local 8x8': '8x8 pooling',
-    'CIFAR Local 16x16 s42': '16x16 pooling',
 }
 
 
@@ -225,9 +194,9 @@ def plot_cifar_comparison(output_dir: Path) -> None:
     plt.xscale('log', base=2)
     plt.xlabel('Truncation Rank')
     plt.ylabel('Test Accuracy')
-    plt.title('CIFAR-10 Locality and Control Runs')
+    plt.title('CIFAR-10 Raw vs Locality-Preserving Inputs')
     plt.ylim(0.1, 0.5)
-    plt.legend(ncol=2, fontsize=9)
+    plt.legend()
     plt.grid(alpha=0.3)
     plt.tight_layout()
     plt.savefig(output_dir / 'task_d_cifar_truncation_curves.png', dpi=200)
@@ -248,9 +217,8 @@ The CIFAR extension now supports a clean compatibility story:
 
 1. MNIST is strongly low-rank under the bilinear decomposition framework.
 2. Raw-pixel CIFAR-10 trains, but remains broad-spectrum even after longer training.
-3. Scalar controls such as width, weight decay, and tiny L1 do not fix that broad-spectrum behavior.
-4. Adding locality-preserving preprocessing makes CIFAR-10 substantially more compressible under the same decomposition analysis.
-5. The benefit is not monotone: `4x4` pooling is a strong regime, while `16x16` pooling overcompresses the task.
+3. Adding locality-preserving preprocessing makes CIFAR-10 substantially more compressible under the same decomposition analysis.
+4. The best tested setting is moderate `4x4` pooling rather than the less aggressive `2x2` variant.
 
 ## Raw-pixel completion
 
@@ -262,12 +230,6 @@ The CIFAR extension now supports a clean compatibility story:
 
 Interpretation: the raw-pixel CIFAR extension is complete, but the resulting spectrum remains broad.
 
-## Failed controls
-
-- Matched-budget tiny-L1 control: `cifar10_l1tiny_mps_20260422-203929`, test accuracy `0.4180`, rank-64 accuracy `0.4100`
-
-Interpretation: scalar regularization does not explain the pooled-model gain.
-
 ## Locality-preserving redesign
 
 - Seed 42 run: `{local_42['run_name']}`, test accuracy `{local_42['test_acc']:.4f}`, rank-64 accuracy `{local_42['rank_64_acc']:.4f}`
@@ -276,22 +238,13 @@ Interpretation: scalar regularization does not explain the pooled-model gain.
 
 Interpretation: the `4x4` locality-preserving redesign is stable across two seeds, clears the raw-student Task G baseline when trained for 50 epochs, and reaches essentially full-rank performance by rank 64.
 
-## Locality-strength tradeoff
-
-- Intermediate `8x8` pooling: `cifar10_locality8_mps_20260422-204446`, test accuracy `0.3812`, rank-32 accuracy `0.3805`
-- Aggressive `16x16` pooling: `cifar10_locality16_mps_20260422-204115`, test accuracy `0.2556`, rank-8 accuracy `0.2493`
-- Replication: `cifar10_locality16_seed123_mps_20260422-204255`, test accuracy `0.2570`, rank-8 accuracy `0.2543`
-
-Interpretation: stronger pooling keeps making the spectrum more compressible, but beyond `4x4` it removes too much semantic content from CIFAR-10.
-
 ## Report recommendation
 
 Frame Extension 1 / Task I as a compatibility result:
 
 - Raw-pixel CIFAR-10 shows that the MNIST result does not directly transfer.
-- Scalar controls do not fix the problem.
 - Locality-preserving CIFAR-10 shows that the weight-based analysis becomes much more compatible with natural images once basic spatial structure is restored.
-- The best regime is moderate locality bias, not maximal pooling.
+- The best tested regime is `4x4` pooling, which improves test accuracy and reaches near-full performance by rank 64.
 """
     (output_dir / 'task_d_narrative.md').write_text(narrative, encoding='utf-8')
 

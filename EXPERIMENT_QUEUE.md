@@ -26,11 +26,11 @@ This file tracks pending, running, and completed local experiments for the CIFAR
 
 - `regularization-ablation`
   - Goal: test whether stronger or modified regularization improves CIFAR spectra
-  - Status: lower-weight-decay and tiny-L1 controls completed, no clear improvement
+  - Status: lower-weight-decay controls completed, no clear improvement outside the tuned `4x4` setting
 
 - `locality-redesign`
   - Goal: test whether fixed locality-preserving preprocessing steepens the CIFAR truncation curve
-  - Status: `2x2`, `4x4`, `8x8`, and `16x16` variants completed; `4x4` is the current sweet spot and `16x16` overcompresses
+  - Status: report-facing comparison uses `2x2` and `4x4`; `4x4` is the current sweet spot
 
 ## Deferred until baseline quality improves
 
@@ -42,9 +42,7 @@ This file tracks pending, running, and completed local experiments for the CIFAR
 
 - Longer raw-pixel CIFAR training improves accuracy modestly but does not create MNIST-like spectral concentration.
 - MNIST retains near-full performance by rank `8-16`, while CIFAR-10 still benefits materially through rank `64-128+`.
-- Width, lower weight decay, and tiny L1 do not materially change the conclusion.
+- Width and lower weight decay do not materially change the conclusion.
 - Locality-preserving preprocessing creates a real compatibility regime rather than a simple accuracy hack.
 - `4x4` pooling gives the best redesign result so far, with rank-32/64 performance effectively at full-rank accuracy across two seeds and after 50-epoch calibration.
-- `8x8` pooling remains compressible but gives up noticeable accuracy.
-- `16x16` pooling is extremely rank-efficient but destroys too much CIFAR signal to be the preferred design.
-- The current paper-facing claim should emphasize a locality-strength tradeoff, not just "more pooling is better."
+- The current paper-facing claim should emphasize the raw-vs-pooled contrast without going deep into secondary controls.

@@ -107,5 +107,5 @@ Anything weaker is course progress, not paper progress.
 - Treat `cifar10_completion_mps` as the completed raw-pixel reference.
 - Treat `cifar10_locality_mps` as the first redesign reference.
 - Treat `cifar10_locality4_*` as the current best compatibility reference.
-- Use scalar controls, such as tiny L1, only as failed controls against the locality story.
+- Use scalar controls only as internal checks against the locality story; do not include them in the main report unless they change the interpretation.
 - Change one structural variable at a time, such as pooling strength, while keeping the training budget fixed.
