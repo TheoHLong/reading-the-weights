@@ -20,6 +20,10 @@ def parse_indices(raw: str) -> list[int]:
     return [int(value.strip()) for value in raw.split(',') if value.strip()]
 
 
+def chunk(items: list[tuple[str, torch.Tensor]], size: int) -> list[list[tuple[str, torch.Tensor]]]:
+    return [items[start:start + size] for start in range(0, len(items), size)]
+
+
 def selected_images(
     *,
     decomposition_path: Path,
@@ -49,10 +53,11 @@ def plot_comparison(
     output_path: Path,
     channels: int,
     quantile: float,
+    columns: int,
 ) -> None:
     row_count = len(rows)
-    col_count = max(len(row) for row in rows)
-    fig, axes = plt.subplots(row_count, col_count, figsize=(col_count * 1.8, row_count * 1.85))
+    col_count = columns
+    fig, axes = plt.subplots(row_count, col_count, figsize=(col_count * 1.85, row_count * 1.85))
     if row_count == 1:
         axes = [axes]
 
@@ -70,7 +75,7 @@ def plot_comparison(
                 ax.imshow(image, cmap='RdBu_r', vmin=-vmax, vmax=vmax, interpolation='bilinear')
             ax.set_title(label, fontsize=10, fontweight='bold', color='#1c3557', pad=6)
 
-    fig.tight_layout(h_pad=0.9, w_pad=0.55)
+    fig.tight_layout(h_pad=0.9, w_pad=0.45)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=300)
     plt.close(fig)
@@ -81,31 +86,37 @@ def main() -> None:
     parser.add_argument('--mnist-decomposition', type=Path, required=True)
     parser.add_argument('--fmnist-decomposition', type=Path, required=True)
     parser.add_argument('--output', type=Path, default=Path('report_assets/task_c/task_c_eigenvector_panel.png'))
-    parser.add_argument('--mnist-classes', type=str, default='1,2,3,4,5')
-    parser.add_argument('--fmnist-classes', type=str, default='1,2,3,4,5')
+    parser.add_argument('--mnist-classes', type=str, default='0,1,2,3,4,5,6,7,8,9')
+    parser.add_argument('--fmnist-classes', type=str, default='0,1,2,3,4,5,6,7,8,9')
+    parser.add_argument('--columns', type=int, default=5, help='Number of panels per row.')
     parser.add_argument('--component-mode', choices=['largest', 'abs'], default='largest')
     parser.add_argument('--quantile', type=float, default=0.995)
     args = parser.parse_args()
 
-    rows = [
-        selected_images(
-            decomposition_path=args.mnist_decomposition,
-            dataset='mnist',
-            class_indices=parse_indices(args.mnist_classes),
-            image_size=28,
-            channels=1,
-            component_mode=args.component_mode,
-        ),
-        selected_images(
-            decomposition_path=args.fmnist_decomposition,
-            dataset='fashion_mnist',
-            class_indices=parse_indices(args.fmnist_classes),
-            image_size=28,
-            channels=1,
-            component_mode=args.component_mode,
-        ),
-    ]
-    plot_comparison(rows=rows, output_path=args.output, channels=1, quantile=float(args.quantile))
+    mnist_images = selected_images(
+        decomposition_path=args.mnist_decomposition,
+        dataset='mnist',
+        class_indices=parse_indices(args.mnist_classes),
+        image_size=28,
+        channels=1,
+        component_mode=args.component_mode,
+    )
+    fmnist_images = selected_images(
+        decomposition_path=args.fmnist_decomposition,
+        dataset='fashion_mnist',
+        class_indices=parse_indices(args.fmnist_classes),
+        image_size=28,
+        channels=1,
+        component_mode=args.component_mode,
+    )
+    rows = chunk(mnist_images, int(args.columns)) + chunk(fmnist_images, int(args.columns))
+    plot_comparison(
+        rows=rows,
+        output_path=args.output,
+        channels=1,
+        quantile=float(args.quantile),
+        columns=int(args.columns),
+    )
     print(f'Task C report panel saved to {args.output}')
 
 

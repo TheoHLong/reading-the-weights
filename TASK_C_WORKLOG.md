@@ -51,11 +51,12 @@ Code/config additions:
 
 - Command: `.venv/bin/python scripts/build_task_c_report_assets.py --mnist-decomposition results/analysis/mnist_task_c_noise_mps_20260501-215026/decomposition.pt --fmnist-decomposition results/analysis/fmnist_task_c_noise_mps_20260501-214848/decomposition.pt --output report_assets/task_c/task_c_eigenvector_panel.png`
 - Output: `report_assets/task_c/task_c_eigenvector_panel.png`
-- Contents: MNIST digits `1-5` and Fashion-MNIST classes `trouser`, `pullover`, `dress`, `coat`, `sandal`, matching the paper-style compact comparison.
+- Contents: all 10 MNIST classes and all 10 Fashion-MNIST classes, arranged as a readable `4 x 5` report panel.
+- Layout: first two rows are MNIST digits `0-9`; last two rows are Fashion-MNIST classes `t-shirt`, `trouser`, `pullover`, `dress`, `coat`, `sandal`, `shirt`, `sneaker`, `bag`, `ankle boot`.
 
 ### Current read
 
 - Task C is now implemented in the reproducible and report-quality sense.
-- The report should use `task_c_eigenvector_panel.png` as the main Task C figure.
+- The report should use the all-class `task_c_eigenvector_panel.png` as the main Task C figure.
 - The all-class grids are useful supplementary assets.
 - The regularized Task C checkpoints are intended for qualitative eigenvector clarity; they should not replace the higher-accuracy baseline numbers when discussing classifier performance.

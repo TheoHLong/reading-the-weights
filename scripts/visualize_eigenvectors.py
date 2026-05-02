@@ -89,6 +89,8 @@ def plot_top_eigenvectors(
     image_size: int,
     channels: int,
     component_mode: str,
+    class_indices: list[int] | None,
+    number_panels: bool,
     scale: str,
     show_eigenvalue: bool,
     title: str,
@@ -102,14 +104,20 @@ def plot_top_eigenvectors(
     class_names = CLASS_NAMES.get(dataset, [str(idx) for idx in range(num_classes)])
     if len(class_names) != num_classes:
         class_names = [str(idx) for idx in range(num_classes)]
+    if class_indices is None:
+        class_indices = list(range(num_classes))
+    if any(class_idx < 0 or class_idx >= num_classes for class_idx in class_indices):
+        raise ValueError(f'Class indices must be in [0, {num_classes - 1}], got {class_indices}')
 
     selected_images = []
     selected_eigenvalues = []
-    for class_idx in range(num_classes):
+    selected_class_names = []
+    for class_idx in class_indices:
         component_idx = int(component_indices[class_idx].item())
         vector = orient_vector(eigenvectors_input[class_idx, component_idx])
         selected_images.append(reshape_vector(vector, channels, image_size))
         selected_eigenvalues.append(float(eigenvalues[class_idx, component_idx].item()))
+        selected_class_names.append(class_names[class_idx])
 
     if scale == 'global':
         all_values = torch.cat([image.flatten() for image in selected_images])
@@ -120,15 +128,15 @@ def plot_top_eigenvectors(
         raise ValueError(f'Unsupported scale mode: {scale}')
 
     cols = 5
-    rows = math.ceil(num_classes / cols)
+    rows = math.ceil(len(class_indices) / cols)
     fig, axes = plt.subplots(rows, cols, figsize=(cols * 2.0, rows * 2.45))
     axes_flat = axes.flatten() if hasattr(axes, 'flatten') else [axes]
 
-    for class_idx, ax in enumerate(axes_flat):
+    for panel_idx, ax in enumerate(axes_flat):
         ax.axis('off')
-        if class_idx >= num_classes:
+        if panel_idx >= len(class_indices):
             continue
-        image = selected_images[class_idx]
+        image = selected_images[panel_idx]
         if global_vmax is None:
             vmax = float(torch.quantile(image.abs().flatten(), 0.995).item())
         else:
@@ -138,16 +146,30 @@ def plot_top_eigenvectors(
             ax.imshow(image, cmap='RdBu_r', vmin=vmin, vmax=vmax, interpolation='bilinear')
         else:
             ax.imshow(image, cmap='RdBu_r', vmin=vmin, vmax=vmax, interpolation='bilinear')
-        title_text = class_names[class_idx]
+        title_text = str(panel_idx + 1) if number_panels else selected_class_names[panel_idx]
         if show_eigenvalue:
-            title_text = f'{title_text}\nlambda={selected_eigenvalues[class_idx]:.3g}'
+            title_text = f'{title_text}\nlambda={selected_eigenvalues[panel_idx]:.3g}'
         ax.set_title(title_text, fontsize=10, fontweight='bold', color='#1c3557', pad=8)
+        if number_panels:
+            ax.text(
+                0.5,
+                -0.10,
+                selected_class_names[panel_idx].lower(),
+                ha='center',
+                va='top',
+                transform=ax.transAxes,
+                fontsize=10,
+                fontweight='bold',
+                color='#1c3557',
+            )
 
     if title:
         fig.suptitle(title, fontsize=14)
         fig.tight_layout(rect=(0, 0, 1, 0.92), h_pad=1.8, w_pad=0.8)
     else:
         fig.tight_layout(h_pad=1.8, w_pad=0.8)
+    if number_panels:
+        fig.subplots_adjust(bottom=0.18)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=220)
     plt.close(fig)
@@ -160,6 +182,17 @@ def main() -> None:
     parser.add_argument('--dataset', type=str, required=True, choices=sorted(CLASS_NAMES), help='Dataset label set.')
     parser.add_argument('--image-size', type=int, required=True, help='Input image width/height.')
     parser.add_argument('--channels', type=int, required=True, help='Input image channels.')
+    parser.add_argument(
+        '--class-indices',
+        type=str,
+        default='',
+        help='Optional comma-separated class indices to plot, in the requested order.',
+    )
+    parser.add_argument(
+        '--number-panels',
+        action='store_true',
+        help='Put panel numbers above images and class names below images.',
+    )
     parser.add_argument(
         '--component-mode',
         choices=['largest', 'abs'],
@@ -181,6 +214,9 @@ def main() -> None:
     args = parser.parse_args()
 
     ensure_dir(args.output.parent)
+    class_indices = None
+    if args.class_indices:
+        class_indices = [int(part.strip()) for part in args.class_indices.split(',') if part.strip()]
     plot_top_eigenvectors(
         decomposition_path=args.decomposition,
         output_path=args.output,
@@ -188,6 +224,8 @@ def main() -> None:
         image_size=args.image_size,
         channels=args.channels,
         component_mode=args.component_mode,
+        class_indices=class_indices,
+        number_panels=bool(args.number_panels),
         scale=args.scale,
         show_eigenvalue=args.show_eigenvalue,
         title=args.title,
