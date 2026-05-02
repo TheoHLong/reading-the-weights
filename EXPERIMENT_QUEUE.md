@@ -1,13 +1,17 @@
 # Experiment Queue
 
-This file tracks pending, running, and completed local experiments for Task D.
+This file tracks pending, running, and completed local experiments for the CIFAR compatibility study.
 
 ## Current best
 
-- Best logged CIFAR baseline so far: `cifar10_headline_mps_20260412-223650`
-- Config: `configs/cifar10_headline_mps.yaml`
-- Best val accuracy: `0.4258`
-- Test accuracy at best validation checkpoint: `0.4181`
+- Best raw-pixel reference: `cifar10_completion_mps_20260412-225712`
+- Config: `configs/cifar10_completion_mps.yaml`
+- Best val accuracy: `0.4452`
+- Test accuracy at best validation checkpoint: `0.4408`
+- Best compatibility result: `cifar10_locality4_wd001_50e_mps_20260427-225245`
+- Config: `configs/cifar10_locality4_wd001_50e_mps.yaml`
+- Best val accuracy: `0.4592`
+- Test accuracy at best validation checkpoint: `0.4638`
 
 ## Next runs
 
@@ -22,24 +26,25 @@ This file tracks pending, running, and completed local experiments for Task D.
 
 - `regularization-ablation`
   - Goal: test whether stronger or modified regularization improves CIFAR spectra
-  - Status: first lower-weight-decay pilot completed, no clear improvement
+  - Status: lower-weight-decay and tiny-L1 controls completed, no clear improvement
 
 - `locality-redesign`
   - Goal: test whether fixed locality-preserving preprocessing steepens the CIFAR truncation curve
-  - Status: first `2x2` redesign promising; stronger `4x4` redesign replicated successfully across two seeds
+  - Status: `2x2`, `4x4`, `8x8`, and `16x16` variants completed; `4x4` is the current sweet spot and `16x16` overcompresses
 
 ## Deferred until baseline quality improves
 
-- Patchified/locality-preserving redesign
-- L1-based sparse bilinear experiments
-- Any report-quality qualitative interpretation claims
+- Any new model family beyond the fixed locality-preprocessing line
+- Additional scalar regularization sweeps
+- Any report-quality qualitative interpretation claims that are not backed by replicated runs
 
 ## Current interpretation
 
 - Longer raw-pixel CIFAR training improves accuracy modestly but does not create MNIST-like spectral concentration.
 - MNIST retains near-full performance by rank `8-16`, while CIFAR-10 still benefits materially through rank `64-128+`.
-- First width and weight-decay ablations did not materially change the conclusion.
-- First locality-preserving redesign slightly steepens the truncation curve at matched 25-epoch budget.
-- Stronger `4x4` pooling gives the best redesign result so far, with rank-32/64 performance much closer to full-rank accuracy.
-- Replication indicates the `4x4` locality effect is stable enough to support a substantive team update.
-- The next iteration should prioritize careful refinement of locality-preserving variants over more scalar hyperparameter tuning.
+- Width, lower weight decay, and tiny L1 do not materially change the conclusion.
+- Locality-preserving preprocessing creates a real compatibility regime rather than a simple accuracy hack.
+- `4x4` pooling gives the best redesign result so far, with rank-32/64 performance effectively at full-rank accuracy across two seeds and after 50-epoch calibration.
+- `8x8` pooling remains compressible but gives up noticeable accuracy.
+- `16x16` pooling is extremely rank-efficient but destroys too much CIFAR signal to be the preferred design.
+- The current paper-facing claim should emphasize a locality-strength tradeoff, not just "more pooling is better."

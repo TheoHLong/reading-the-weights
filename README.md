@@ -2,7 +2,7 @@
 
 Task A workspace for the CS7643 final project on bilinear MLP weight interpretability.
 
-Task D work should be logged in `TASK_D_WORKLOG.md`.
+CIFAR extension and redesign work should be logged in `CIFAR_COMPATIBILITY_WORKLOG.md`.
 Experiment rules live in `RESEARCH_PROTOCOL.md`.
 Planned and active runs live in `EXPERIMENT_QUEUE.md`.
 Comparable run outcomes live in `RESULTS_TABLE.md`.

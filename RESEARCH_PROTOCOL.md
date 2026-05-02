@@ -1,6 +1,6 @@
 # Research Protocol
 
-This file defines the operating rules for Task D so experiments remain reproducible, interpretable, and publication-oriented.
+This file defines the operating rules for the CIFAR-10 extension/redesign work so experiments remain reproducible, interpretable, and publication-oriented.
 
 ## Core principle
 
@@ -8,7 +8,7 @@ Do not treat an experiment as evidence unless its setup, artifacts, and interpre
 
 ## Phase gates
 
-Task D now has two explicit phases:
+The CIFAR work now has two explicit phases:
 
 - `raw-pixel completion`
   - Goal: finish the original assignment faithfully.
@@ -16,6 +16,10 @@ Task D now has two explicit phases:
 - `locality-preserving redesign`
   - Goal: test whether adding structured inductive bias improves spectral concentration on CIFAR-10.
   - Entry condition: raw-pixel CIFAR remains broad-spectrum after fair training.
+
+- `compatibility study`
+  - Goal: determine which modifications actually make CIFAR-10 compatible with weight-based linear analysis.
+  - Entry condition: at least one redesign shows a materially different truncation curve from the raw-pixel baseline.
 
 Do not mix conclusions across phases. A redesign result is not evidence that the original method worked; it is evidence about the modified method.
 
@@ -32,6 +36,7 @@ Do not mix conclusions across phases. A redesign result is not evidence that the
 - Output artifact paths
 - Best validation metric
 - Final test metric
+- Rank-efficiency thresholds for `90%`, `95%`, and `99%` of full-rank accuracy
 - Short interpretation: what did we learn and what changed next
 
 ## Must-log items for every code change
@@ -62,6 +67,7 @@ Progress is meaningful enough to communicate when at least one of these is true:
 - A new method beats the current best CIFAR baseline by a clear margin and also produces decomposition artifacts.
 - A redesign improves the truncation curve in a way that changes the scientific interpretation of Task D, even if top-line accuracy changes only modestly.
 - A negative result is strong enough to justify redesign, not just more tuning.
+- A control result shows that a simpler modification, such as width or scalar regularization, does not explain the redesign gain.
 
 ## Team communication triggers
 
@@ -83,6 +89,8 @@ Message the team when:
 - Treat surprising wins as suspect until replicated.
 - For redesign experiments, compare against the nearest matched raw-pixel baseline, not just the global best number.
 - If a redesign helps the spectral story but not accuracy, log that explicitly rather than flattening everything into one scalar metric.
+- When comparing raw vs pooled models, always report both full-rank accuracy and rank-efficiency thresholds.
+- Prefer matched-budget comparisons before using longer runs as headline evidence.
 
 ## Publication bar for Task D
 
@@ -98,5 +106,6 @@ Anything weaker is course progress, not paper progress.
 
 - Treat `cifar10_completion_mps` as the completed raw-pixel reference.
 - Treat `cifar10_locality_mps` as the first redesign reference.
-- The next locality experiments should change one structural variable at a time, such as pooling strength, while keeping the training budget fixed.
-- Do not return to scalar hyperparameter tuning unless a redesign result makes that newly relevant.
+- Treat `cifar10_locality4_*` as the current best compatibility reference.
+- Use scalar controls, such as tiny L1, only as failed controls against the locality story.
+- Change one structural variable at a time, such as pooling strength, while keeping the training budget fixed.

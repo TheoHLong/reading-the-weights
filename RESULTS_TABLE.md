@@ -10,6 +10,13 @@ This file tracks the most informative local Task D runs.
 | `cifar10_locality_mps_20260412-230328` | `configs/cifar10_locality_mps.yaml` | `mps` | 25 | 0.4328 | 0.4200 | rank 32: 0.4037, rank 64: 0.4215, rank 128: 0.4201, full: 0.4200 | Locality-preserving preprocessing modestly steepens the truncation curve at matched budget. |
 | `cifar10_locality4_mps_20260412-231256` | `configs/cifar10_locality4_mps.yaml` | `mps` | 25 | 0.4326 | 0.4399 | rank 16: 0.3924, rank 32: 0.4290, rank 64: 0.4402, full: 0.4399 | Stronger locality bias is the best redesign result so far: much steeper truncation and nearly the same accuracy as the 50-epoch raw-pixel baseline. |
 | `cifar10_locality4_seed123_mps_20260412-231948` | `configs/cifar10_locality4_seed123_mps.yaml` | `mps` | 25 | 0.4360 | 0.4436 | rank 16: 0.3936, rank 32: 0.4324, rank 64: 0.4434, full: 0.4436 | Replication confirms the `4x4` locality result is stable across seeds and slightly better than seed 42. |
+| `cifar10_locality4_50e_mps_20260427-224921` | `configs/cifar10_locality4_50e_mps.yaml` | `mps` | 50 | 0.4574 | 0.4612 | rank 32: 0.4430, rank 64: 0.4594, full: 0.4612 | Longer `4x4` training clears Kai's raw-student Task G baseline while preserving strong rank efficiency. |
+| `cifar10_locality4_wd001_50e_mps_20260427-225245` | `configs/cifar10_locality4_wd001_50e_mps.yaml` | `mps` | 50 | 0.4592 | 0.4638 | rank 32: 0.4408, rank 64: 0.4630, full: 0.4638 | Current best pooling result: small gain from lower weight decay and near-full performance by rank 64. |
+| `cifar10_locality2_50e_mps_20260427-225510` | `configs/cifar10_locality2_50e_mps.yaml` | `mps` | 50 | 0.4566 | 0.4509 | rank 32: 0.4049, rank 64: 0.4451, full: 0.4509 | `2x2` pooling is competitive on validation but less accurate on test and less rank-efficient than `4x4`. |
+| `cifar10_l1tiny_mps_20260422-203929` | `configs/cifar10_l1tiny_mps.yaml` | `mps` | 25 | 0.4260 | 0.4180 | rank 32: 0.3767, rank 64: 0.4100, rank 128: 0.4172, full: 0.4180 | Tiny L1 does not improve accuracy or rank efficiency over the raw matched-budget baseline, so it works as a failed control. |
+| `cifar10_locality8_mps_20260422-204446` | `configs/cifar10_locality8_mps.yaml` | `mps` | 25 | 0.3826 | 0.3812 | rank 16: 0.3598, rank 32: 0.3805, rank 64: 0.3806, full: 0.3812 | `8x8` pooling stays highly compressible but gives up substantial CIFAR accuracy relative to the `4x4` sweet spot. |
+| `cifar10_locality16_mps_20260422-204115` | `configs/cifar10_locality16_mps.yaml` | `mps` | 25 | 0.2604 | 0.2556 | rank 8: 0.2493, rank 16: 0.2547, rank 64: 0.2550, full: 0.2556 | `16x16` pooling massively overcompresses the input: extremely low-rank, but no longer a competitive classifier. |
+| `cifar10_locality16_seed123_mps_20260422-204255` | `configs/cifar10_locality16_seed123_mps.yaml` | `mps` | 25 | 0.2518 | 0.2570 | rank 8: 0.2543, rank 16: 0.2572, rank 64: 0.2567, full: 0.2570 | Replication confirms the `16x16` regime is consistently overcompressed rather than a seed-specific failure. |
 | `cifar10_width1024_mps_20260412-223946` | `configs/cifar10_width1024_mps.yaml` | `mps` | 10 | 0.4062 | 0.3950 | rank 64: 0.3907, rank 128: 0.3939, full: 0.3950 | Width alone does not meaningfully improve the 10-epoch CIFAR result. |
 | `cifar10_wd001_mps_20260412-224113` | `configs/cifar10_wd001_mps.yaml` | `mps` | 10 | 0.3942 | 0.3974 | rank 64: 0.3869, rank 128: 0.3960, full: 0.3974 | Lower weight decay does not materially change the story. |
 | `cifar10_completion_mps_20260412-225712` | `configs/cifar10_completion_mps.yaml` | `mps` | 50 | 0.4452 | 0.4408 | rank 64: 0.4280, rank 128: 0.4424, full: 0.4408 | Raw-pixel CIFAR improves with longer training but still remains broad-spectrum. |
@@ -18,7 +25,9 @@ This file tracks the most informative local Task D runs.
 
 - The MNIST/CIFAR truncation contrast is now robust enough to treat as a real finding, not a logging artifact.
 - The current raw-pixel CIFAR setup improves with more training, but not in a way that makes the spectrum sharply low-rank.
-- The first locality-preserving redesign modestly improves spectral concentration at matched epoch budget.
+- Scalar controls, including width, lower weight decay, and tiny L1, do not explain the redesign gain.
 - A stronger `4x4` locality-preserving redesign improves both the spectral story and training efficiency relative to raw-pixel CIFAR.
 - Replication confirms the `4x4` locality effect is stable across at least two seeds.
-- The next productive move is refinement inside the locality-preserving family and preparation of a team update.
+- Longer/tuned `4x4` pooling now clears Kai's raw-student Task G validation baseline and reaches `46.38%` test accuracy.
+- The `8x8` and `16x16` runs sharpen the claim: locality helps up to a point, but overcompression destroys CIFAR semantics even as the spectrum becomes very low-rank.
+- The next productive move is packaging the locality-strength tradeoff cleanly for the report.
