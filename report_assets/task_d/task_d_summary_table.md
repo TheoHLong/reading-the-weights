@@ -1,8 +1,15 @@
-| label | run_name | kind | best_val_acc | test_acc | rank_16_acc | rank_32_acc | rank_64_acc | full_rank_acc |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| MNIST | mnist_pilot_mps_20260412-223552 | baseline | 0.9671666666666661 | 0.9684 | 0.9686 | 0.9686 | 0.9684 | 0.9684 |
-| CIFAR Raw 25e | cifar10_headline_mps_20260412-223650 | baseline | 0.4258 | 0.4181 | 0.3198 | 0.3768 | 0.4101 | 0.4181 |
-| CIFAR Raw 50e | cifar10_completion_mps_20260412-225712 | baseline | 0.44520000000000004 | 0.4408 | 0.3038 | 0.3742 | 0.428 | 0.4408 |
-| CIFAR Local 2x2 | cifar10_locality_mps_20260412-230328 | redesign | 0.4328 | 0.42 | 0.3334 | 0.4037 | 0.4215 | 0.42 |
-| CIFAR Local 4x4 s42 | cifar10_locality4_mps_20260412-231256 | redesign | 0.43260000000000004 | 0.4399 | 0.3924 | 0.429 | 0.4402 | 0.4399 |
-| CIFAR Local 4x4 s123 | cifar10_locality4_seed123_mps_20260412-231948 | redesign | 0.436 | 0.4436 | 0.3936 | 0.4324 | 0.4434 | 0.4436 |
+| Run | Kind | Best Val Acc | Best Val Loss | Test Acc | Rank-32 Acc | Rank-64 Acc | Rank @ 90% | Rank @ 95% | Rank @ 99% |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| MNIST | baseline | 96.72% | 0.1238 | 96.84% | 96.86% | 96.84% | 4 | 8 | 8 |
+| CIFAR Raw 25e | baseline | 42.58% | 1.7749 | 41.81% | 37.68% | 41.01% | 32 | 64 | 128 |
+| CIFAR Raw 50e | baseline | 44.52% | 1.7396 | 44.08% | 37.42% | 42.80% | 64 | 64 | 128 |
+| CIFAR Local 2x2 | redesign | 43.28% | 1.7451 | 42.00% | 40.37% | 42.15% | 32 | 32 | 64 |
+| CIFAR Local 4x4 s42 | redesign | 43.26% | 1.7090 | 43.99% | 42.90% | 44.02% | 32 | 32 | 64 |
+| CIFAR Local 4x4 s123 | redesign | 43.60% | 1.7120 | 44.36% | 43.24% | 44.34% | 32 | 32 | 64 |
+| CIFAR Local 4x4 50e | redesign | 45.74% | 1.6624 | 46.12% | 44.30% | 45.94% | 32 | 32 | 64 |
+| CIFAR Local 4x4 50e wd=.01 | redesign | 45.92% | 1.6589 | 46.38% | 44.08% | 46.30% | 32 | 32 | 64 |
+| CIFAR Local 2x2 50e | redesign | 45.66% | 1.7032 | 45.09% | 40.49% | 44.51% | 64 | 64 | 128 |
+| CIFAR Raw 25e + L1 | control | 42.60% | 1.7751 | 41.80% | 37.67% | 41.00% | 32 | 64 | 128 |
+| CIFAR Local 8x8 | redesign | 38.26% | 1.8635 | 38.12% | 38.05% | 38.06% | 16 | 32 | 32 |
+| CIFAR Local 16x16 s42 | redesign | 26.04% | 2.1274 | 25.56% | 25.49% | 25.50% | 8 | 8 | 16 |
+| CIFAR Local 16x16 s123 | redesign | 25.18% | 2.1271 | 25.70% | 25.67% | 25.67% | 8 | 8 | 16 |
