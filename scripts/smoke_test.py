@@ -13,7 +13,7 @@ ensure_project_on_path()
 
 from src.decomposition import decompose_bilinear_model
 from src.config import load_config
-from src.model import build_image_classifier
+from src.model import build_image_classifier, load_image_classifier_state
 from src.train import train_image_experiment
 from src.utils import ensure_dir, load_checkpoint, write_json
 
@@ -26,6 +26,11 @@ def main() -> None:
         default=Path('configs/baselines/mnist_baseline.yaml'),
         help='Baseline config to derive the smoke test from.',
     )
+    parser.add_argument(
+        '--device',
+        default=None,
+        help='Optional device override for smoke runs, for example cpu when an MPS config is checked on a non-MPS host.',
+    )
     args = parser.parse_args()
 
     config = deepcopy(load_config(args.config))
@@ -36,12 +41,14 @@ def main() -> None:
     config['train']['pin_memory'] = False
     config['train']['max_train_batches'] = 2
     config['train']['max_eval_batches'] = 1
+    if args.device is not None:
+        config['train']['device'] = args.device
 
     artifacts = train_image_experiment(config)
     payload = load_checkpoint(artifacts['best_checkpoint_path'], map_location='cpu')
 
     model = build_image_classifier(payload['config']['model'], seed=int(payload['config']['seed']))
-    model.load_state_dict(payload['model_state_dict'])
+    load_image_classifier_state(model, payload['model_state_dict'])
     model.eval()
 
     decomposition = decompose_bilinear_model(model)

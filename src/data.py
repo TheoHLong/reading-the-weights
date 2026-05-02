@@ -26,22 +26,38 @@ class DatasetBundle:
     num_classes: int
 
 
-def build_dataset_transforms(dataset_name: str) -> tuple[transforms.Compose, transforms.Compose]:
-    if dataset_name == 'cifar10':
-        eval_transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(CIFAR10_MEAN, CIFAR10_STD),
-        ])
-        train_transform = transforms.Compose([
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(CIFAR10_MEAN, CIFAR10_STD),
-        ])
-        return train_transform, eval_transform
+def build_dataset_transforms(dataset_cfg: dict) -> tuple[transforms.Compose, transforms.Compose]:
+    dataset_name = dataset_cfg['name']
+    image_size = int(dataset_cfg['image_size'])
 
-    base_transform = transforms.Compose([transforms.ToTensor()])
-    return base_transform, base_transform
+    normalize_mean = dataset_cfg.get('normalize_mean')
+    normalize_std = dataset_cfg.get('normalize_std')
+    if normalize_mean is None and normalize_std is None and dataset_name == 'cifar10':
+        normalize_mean = CIFAR10_MEAN
+        normalize_std = CIFAR10_STD
+    if (normalize_mean is None) != (normalize_std is None):
+        raise ValueError('normalize_mean and normalize_std must be provided together')
+
+    normalize = None
+    if normalize_mean is not None and normalize_std is not None:
+        normalize = transforms.Normalize(normalize_mean, normalize_std)
+
+    train_ops = []
+    default_cifar_aug = dataset_name == 'cifar10'
+    if bool(dataset_cfg.get('train_random_crop', default_cifar_aug)):
+        padding = int(dataset_cfg.get('random_crop_padding', 4))
+        train_ops.append(transforms.RandomCrop(image_size, padding=padding))
+    if bool(dataset_cfg.get('train_random_horizontal_flip', default_cifar_aug)):
+        train_ops.append(transforms.RandomHorizontalFlip())
+    train_ops.append(transforms.ToTensor())
+    if normalize is not None:
+        train_ops.append(normalize)
+
+    eval_ops = [transforms.ToTensor()]
+    if normalize is not None:
+        eval_ops.append(normalize)
+
+    return transforms.Compose(train_ops), transforms.Compose(eval_ops)
 
 
 def build_image_dataloaders(dataset_cfg: dict, train_cfg: dict) -> DatasetBundle:
@@ -57,32 +73,11 @@ def build_image_dataloaders(dataset_cfg: dict, train_cfg: dict) -> DatasetBundle
     val_fraction = float(train_cfg.get('val_fraction', 0.1))
     split_seed = int(train_cfg.get('split_seed', 42))
 
-    train_transform, eval_transform = build_dataset_transforms(dataset_name)
-
-    if dataset_name == 'cifar10':
-        train_dataset_aug = dataset_cls(
-            root=root,
-            train=True,
-            download=True,
-            transform=train_transform,
-        )
-        train_dataset_eval = dataset_cls(
-            root=root,
-            train=True,
-            download=True,
-            transform=eval_transform,
-        )
-        test_dataset = dataset_cls(
-            root=root,
-            train=False,
-            download=True,
-            transform=eval_transform,
-        )
-        num_examples = len(train_dataset_aug)
-    else:
-        train_dataset = dataset_cls(root=root, train=True, download=True, transform=train_transform)
-        test_dataset = dataset_cls(root=root, train=False, download=True, transform=eval_transform)
-        num_examples = len(train_dataset)
+    train_transform, eval_transform = build_dataset_transforms(dataset_cfg)
+    train_dataset_aug = dataset_cls(root=root, train=True, download=True, transform=train_transform)
+    train_dataset_eval = dataset_cls(root=root, train=True, download=True, transform=eval_transform)
+    test_dataset = dataset_cls(root=root, train=False, download=True, transform=eval_transform)
+    num_examples = len(train_dataset_aug)
 
     num_val = int(round(num_examples * val_fraction))
     if num_val <= 0 or num_val >= num_examples:
@@ -90,18 +85,11 @@ def build_image_dataloaders(dataset_cfg: dict, train_cfg: dict) -> DatasetBundle
     num_train = num_examples - num_val
 
     split_generator = torch.Generator().manual_seed(split_seed)
-    if dataset_name == 'cifar10':
-        indices = torch.randperm(num_examples, generator=split_generator).tolist()
-        train_idx = indices[:num_train]
-        val_idx = indices[num_train:]
-        train_subset = Subset(train_dataset_aug, train_idx)
-        val_subset = Subset(train_dataset_eval, val_idx)
-    else:
-        train_subset, val_subset = torch.utils.data.random_split(
-            train_dataset,
-            [num_train, num_val],
-            generator=split_generator,
-        )
+    indices = torch.randperm(num_examples, generator=split_generator).tolist()
+    train_idx = indices[:num_train]
+    val_idx = indices[num_train:]
+    train_subset = Subset(train_dataset_aug, train_idx)
+    val_subset = Subset(train_dataset_eval, val_idx)
 
     train_loader = DataLoader(
         train_subset,

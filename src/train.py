@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import platform
 from pathlib import Path
 
 import pandas as pd
@@ -10,8 +11,8 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from tqdm.auto import tqdm
 
 from src.data import build_image_dataloaders
-from src.model import build_image_classifier
-from src.utils import ensure_dir, resolve_device, set_seed, timestamp, write_json
+from src.model import build_image_classifier, load_image_classifier_state
+from src.utils import ensure_dir, load_checkpoint, resolve_device, set_seed, timestamp, write_json
 
 
 @torch.no_grad()
@@ -47,15 +48,31 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
     set_seed(int(config['seed']))
     config.setdefault('train', {})
     config['train'].setdefault('split_seed', int(config['seed']))
+    config['train'].setdefault('l1_lambda', 0.0)
+
+    input_noise_std = float(
+        config['train'].get(
+            'train_input_noise_std',
+            config['train'].get('input_noise_std', 0.0),
+        )
+    )
+    config['train']['input_noise_std'] = input_noise_std
+    config['train']['train_input_noise_std'] = input_noise_std
+
+    device = resolve_device(config['train'].get('device', 'auto'))
+    if device.type == 'cpu':
+        config['train']['pin_memory'] = False
+        if platform.system() == 'Darwin':
+            # Torch shared-memory workers can fail under sandboxed macOS CPU runs.
+            config['train']['num_workers'] = 0
 
     dataset_bundle = build_image_dataloaders(config['dataset'], config['train'])
-    device = resolve_device(config['train'].get('device', 'auto'))
     max_train_batches = config['train'].get('max_train_batches')
     max_eval_batches = config['train'].get('max_eval_batches')
     max_train_batches = None if max_train_batches in (None, 0) else int(max_train_batches)
     max_eval_batches = None if max_eval_batches in (None, 0) else int(max_eval_batches)
     model = build_image_classifier(config['model'], seed=int(config['seed'])).to(device)
-    input_noise_std = float(config['train'].get('input_noise_std', 0.0))
+    l1_lambda = float(config['train'].get('l1_lambda', 0.0))
 
     criterion = nn.CrossEntropyLoss()
     optimizer = AdamW(
@@ -92,6 +109,11 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
             optimizer.zero_grad(set_to_none=True)
             logits = model(x)
             loss = criterion(logits, y)
+            if l1_lambda > 0.0:
+                l1_penalty = torch.zeros((), device=device)
+                for parameter in model.parameters():
+                    l1_penalty = l1_penalty + parameter.abs().sum()
+                loss = loss + l1_lambda * l1_penalty
             loss.backward()
             optimizer.step()
 
@@ -136,6 +158,20 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
             best_val_acc = val_acc
             torch.save(checkpoint_payload, best_checkpoint_path)
 
+    best_payload = load_checkpoint(best_checkpoint_path, map_location=device)
+    best_model = build_image_classifier(
+        best_payload['config']['model'],
+        seed=int(best_payload['config']['seed']),
+    ).to(device)
+    load_image_classifier_state(best_model, best_payload['model_state_dict'])
+    test_loss, test_acc = evaluate(
+        best_model,
+        dataset_bundle.test_loader,
+        criterion,
+        device,
+        max_batches=max_eval_batches,
+    )
+
     metrics_path = run_dir / 'metrics.csv'
     pd.DataFrame(history).to_csv(metrics_path, index=False)
     write_json(run_dir / 'config.json', config)
@@ -146,6 +182,8 @@ def train_image_experiment(config: dict) -> dict[str, Path]:
             'dataset': config['dataset']['name'],
             'device': str(device),
             'best_val_acc': best_val_acc,
+            'test_loss_at_best_val': test_loss,
+            'test_acc_at_best_val': test_acc,
             'best_checkpoint': str(best_checkpoint_path),
             'latest_checkpoint': str(latest_checkpoint_path),
         },

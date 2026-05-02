@@ -31,7 +31,7 @@ from src.adversarial import (
     evaluate_attacks,
 )
 from src.data import build_image_dataloaders
-from src.model import build_image_classifier
+from src.model import build_image_classifier, load_image_classifier_state
 from src.utils import ensure_dir, load_checkpoint, resolve_device
 
 
@@ -77,7 +77,7 @@ def _build_model(payload: dict, device: torch.device) -> nn.Module:
             'checkpoints are not supported by Figure 7 decomposition.'
         )
     model = build_image_classifier(config['model'], seed=int(config['seed']))
-    model.load_state_dict(payload['model_state_dict'])
+    load_image_classifier_state(model, payload['model_state_dict'])
     model.to(device)
     model.eval()
     return model

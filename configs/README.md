@@ -1,10 +1,14 @@
 # Configs
 
 - `baselines/`: standalone bilinear student baselines and noise-regularized baseline configs.
+- `cifar_compatibility/`: Ali's Task D/I CIFAR raw-pixel, scalar-control, and locality-preserving pooling configs.
 - `guides/`: guide/teacher model training configs.
+- `task_c/`: Ali's noise-regularized MNIST/Fashion-MNIST visualization configs.
 - `transfer/`: KD and CKA student transfer configs, including ablations and debug variants.
 
 All scripts accept `--config`, so configs can be moved within this tree without changing experiment code.
+
+The primary current raw CIFAR student baseline is `baselines/cifar10_baseline.yaml`. Ali's longer foundation config is kept separately as `cifar_compatibility/cifar10_foundation_baseline.yaml` to avoid confusing it with the current baseline.
 
 ## SQS Configs
 

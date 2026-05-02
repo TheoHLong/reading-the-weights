@@ -30,7 +30,7 @@ ensure_project_on_path()
 from src.config import load_config
 from src.data import build_image_dataloaders
 from src.decomposition import decompose_bilinear_model, spectral_effective_rank
-from src.model import build_image_classifier
+from src.model import build_image_classifier, load_image_classifier_state
 from src.train import evaluate
 from src.utils import ensure_dir, load_checkpoint, resolve_device, set_seed, timestamp, write_json
 
@@ -244,7 +244,7 @@ def analyze_checkpoint(checkpoint_path: Path, snapshots_dir: Path) -> dict[str, 
     payload = load_checkpoint(checkpoint_path, map_location='cpu')
     config = payload['config']
     model = build_image_classifier(config['model'], seed=int(config['seed']))
-    model.load_state_dict(payload['model_state_dict'])
+    load_image_classifier_state(model, payload['model_state_dict'])
     model.eval()
 
     decomposition = decompose_bilinear_model(model)

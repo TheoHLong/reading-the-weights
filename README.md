@@ -8,6 +8,7 @@ The project narrative is now:
 2. Extend the same pipeline to CIFAR-10 as a harder natural-image stress test.
 3. Study whether KD or CKA transfer changes bilinear student training behavior and weight structure.
 4. Add Signed Quadratic Shrink (SQS) gates as a stability/interpretability extension for bilinear-style GLUs.
+5. Test whether fixed locality-preserving CIFAR-10 preprocessing restores rank efficiency under the same weight analysis.
 
 ## Layout
 
@@ -17,6 +18,7 @@ The project narrative is now:
 - `notebooks/`: Colab/local notebooks.
 - `docs/handoffs/`: task handoff notes.
 - `docs/plans/`: implementation plans and experiment notes.
+- `report_assets/`: checked-in report figures, summary tables, and narrative snippets.
 - `checkpoints/`: generated model checkpoints, ignored by git except `.gitkeep`.
 - `results/`: generated metrics, analysis artifacts, adversarial outputs, and diagnostics, ignored by git except `.gitkeep`.
 
@@ -50,8 +52,19 @@ CIFAR-10 baseline and teacher:
 
 ```bash
 python scripts/train_baseline.py --config configs/baselines/cifar10_baseline.yaml
+python scripts/train_baseline.py --config configs/cifar_compatibility/cifar10_foundation_baseline.yaml
+python scripts/train_baseline.py --config configs/cifar_compatibility/cifar10_completion_mps.yaml
+python scripts/train_baseline.py --config configs/cifar_compatibility/cifar10_locality4_wd001_50e_mps.yaml
 python scripts/train_guide.py --config configs/guides/resnet18_cifar10.yaml
 python scripts/eval_checkpoint.py --checkpoint checkpoints/resnet18_cifar10_teacher.pt
+```
+
+Truncation and report assets:
+
+```bash
+python scripts/evaluate_truncation.py --checkpoint checkpoints/<best-run>.pt --split test
+python scripts/build_task_c_report_assets.py --mnist-decomposition results/analysis/<mnist-run>/decomposition.pt --fmnist-decomposition results/analysis/<fmnist-run>/decomposition.pt
+python scripts/build_task_d_report_assets.py
 ```
 
 Transfer runs:
@@ -116,6 +129,7 @@ Note: the two scripts apply input noise with different semantics on purpose.
 | MNIST paper-style bilinear / SQS | 95.38% / 95.20% | Uses SQS paper hyperparameters: noise=1.0, wd=0.1, batch=2048, epochs=20. |
 | Fashion-MNIST paper-style bilinear / SQS | 78.43% / 82.72% | SQS improves this local paper-style run; bilinear appears under-converged. |
 | CIFAR-10 1-layer bilinear baseline | 44.88% | Raw-pixel natural-image stress test. |
+| CIFAR-10 raw-pixel 50e / 4x4 pooled 50e | 44.52% / 45.92% | Ali compatibility runs; pooled model reaches near-full test accuracy by rank 64. |
 | CIFAR-10 1-layer SQS baseline / CKA | 47.22% / 47.70% | SQS gives a small single-layer gain; CKA gain is modest. |
 | CIFAR-10 ResNet-18 guide | 95.98% | Teacher checkpoint alias: `checkpoints/resnet18_cifar10_teacher.pt`. |
 | CIFAR-10 KD student | 45.10% | KD gives little improvement over 1-layer baseline. |
@@ -137,6 +151,8 @@ Analysis runs write:
 
 - `results/analysis/<checkpoint_name>/decomposition.pt`
 - `results/analysis/<checkpoint_name>/summary.json`
+- `results/truncation/<checkpoint_name>/<split>_truncation.csv`
+- `results/truncation/<checkpoint_name>/<split>_summary.json`
 - `results/figures/<run_name>/...` for generated SQS comparison plots and CSVs
 
 Adversarial runs write:
@@ -155,6 +171,8 @@ Adversarial runs write:
 | --- | --- |
 | `BilinearImageClassifier(...)` | Bilinear MLP image classifier. `forward(x)` accepts `[B, C, H, W]` images and returns logits. |
 | `build_image_classifier(model_cfg, seed)` | Factory for configs. |
+| `build_input_projection(...)` | Builds fixed input-side projections such as non-trainable average pooling for CIFAR compatibility runs. |
+| `load_image_classifier_state(model, state_dict)` | Loads student checkpoints while tolerating the deterministic `input_projection` buffer added after older raw-pixel runs. |
 | `SignedQuadraticShrink(...)` | SQS gate with paper defaults `c=0.01`, `lambda=0.5`, used by `gate: sqs`. |
 | `model.embedding_weight` | Detached embedding weight `[d_hidden, d_input]`. |
 | `model.output_weight` | Detached head weight `[d_output, d_hidden]`. |

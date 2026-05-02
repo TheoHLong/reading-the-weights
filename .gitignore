@@ -5,6 +5,7 @@
 __pycache__/
 *.py[cod]
 *.so
+*.egg-info/
 .venv/
 venv/
 env/
@@ -27,7 +28,10 @@ results/diagnostics/*
 !results/diagnostics/.gitkeep
 results/figures/*
 !results/figures/.gitkeep
+results/truncation/*
+!results/truncation/.gitkeep
 wandb/
+report_assets/.mplconfig/
 
 # Local session notes
 HANDOFF.md

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import torch
 from einops import rearrange
 from jaxtyping import Float
@@ -59,6 +61,52 @@ class Linear(nn.Linear):
         return self.gate(super().forward(x))
 
 
+def build_input_projection(
+    *,
+    d_input: int,
+    preprocess: str | None,
+    input_channels: int | None,
+    image_size: int | None,
+    pool_kernel: int | None,
+    pool_stride: int | None,
+) -> Tensor | None:
+    if preprocess in (None, 'identity'):
+        return None
+
+    if preprocess != 'avg_pool':
+        raise ValueError(f'Unsupported preprocess mode: {preprocess}')
+    if input_channels is None or image_size is None:
+        raise ValueError('avg_pool preprocess requires input_channels and image_size')
+
+    input_channels = int(input_channels)
+    image_size = int(image_size)
+    pool_kernel = int(pool_kernel or 2)
+    pool_stride = int(pool_stride or pool_kernel)
+    pooled_size = math.floor((image_size - pool_kernel) / pool_stride) + 1
+    if pooled_size <= 0:
+        raise ValueError('avg_pool preprocess produced a non-positive spatial size')
+
+    projection = torch.zeros(input_channels * pooled_size * pooled_size, d_input)
+    patch_area = float(pool_kernel * pool_kernel)
+
+    row_idx = 0
+    for channel in range(input_channels):
+        channel_offset = channel * image_size * image_size
+        for out_row in range(pooled_size):
+            row_start = out_row * pool_stride
+            for out_col in range(pooled_size):
+                col_start = out_col * pool_stride
+                for k_row in range(pool_kernel):
+                    for k_col in range(pool_kernel):
+                        in_row = row_start + k_row
+                        in_col = col_start + k_col
+                        flat_idx = channel_offset + in_row * image_size + in_col
+                        projection[row_idx, flat_idx] = 1.0 / patch_area
+                row_idx += 1
+
+    return projection
+
+
 class BilinearImageClassifier(nn.Module):
     def __init__(
         self,
@@ -69,28 +117,55 @@ class BilinearImageClassifier(nn.Module):
         bias: bool = False,
         residual: bool = False,
         gate: str | None = None,
+        preprocess: str | None = None,
+        input_channels: int | None = None,
+        image_size: int | None = None,
+        pool_kernel: int | None = None,
+        pool_stride: int | None = None,
         seed: int = 42,
     ) -> None:
         super().__init__()
         torch.manual_seed(seed)
         self.residual = residual
         self.gate = gate
+        self.raw_input_dim = d_input
+        self.preprocess = preprocess or 'identity'
 
-        self.embed = Linear(d_input, d_hidden, bias=False)
+        input_projection = build_input_projection(
+            d_input=d_input,
+            preprocess=self.preprocess,
+            input_channels=input_channels,
+            image_size=image_size,
+            pool_kernel=pool_kernel,
+            pool_stride=pool_stride,
+        )
+        self.register_buffer(
+            'input_projection',
+            input_projection if input_projection is not None else torch.empty(0),
+        )
+        self.has_input_projection = input_projection is not None
+        processed_input_dim = int(input_projection.shape[0]) if input_projection is not None else d_input
+
+        self.embed = Linear(processed_input_dim, d_hidden, bias=False)
         self.blocks = nn.ModuleList([
             Bilinear(d_hidden, d_hidden, bias=bias, gate=gate) for _ in range(n_layer)
         ])
         self.head = Linear(d_hidden, d_output, bias=False)
 
     def forward(self, x: Tensor) -> Tensor:
-        x = self.embed(x.flatten(start_dim=1))
+        x = x.flatten(start_dim=1)
+        if self.has_input_projection:
+            x = x @ self.input_projection.T
+        x = self.embed(x)
         for layer in self.blocks:
             x = x + layer(x) if self.residual else layer(x)
         return self.head(x)
 
     @property
     def embedding_weight(self) -> Tensor:
-        return self.embed.weight.detach()
+        if not self.has_input_projection:
+            return self.embed.weight.detach()
+        return self.embed.weight.detach() @ self.input_projection.detach()
 
     @property
     def output_weight(self) -> Tensor:
@@ -113,5 +188,21 @@ def build_image_classifier(model_cfg: dict, seed: int) -> BilinearImageClassifie
         bias=bool(model_cfg['bias']),
         residual=bool(model_cfg['residual']),
         gate=model_cfg.get('gate'),
+        preprocess=model_cfg.get('preprocess'),
+        input_channels=model_cfg.get('input_channels'),
+        image_size=model_cfg.get('image_size'),
+        pool_kernel=model_cfg.get('pool_kernel'),
+        pool_stride=model_cfg.get('pool_stride'),
         seed=seed,
     )
+
+
+def load_image_classifier_state(model: BilinearImageClassifier, state_dict: dict) -> None:
+    load_result = model.load_state_dict(state_dict, strict=False)
+    tolerated_missing = {'input_projection'}
+    missing = set(load_result.missing_keys) - tolerated_missing
+    if missing or load_result.unexpected_keys:
+        raise RuntimeError(
+            'Checkpoint state dict mismatch: '
+            f'missing={load_result.missing_keys}, unexpected={load_result.unexpected_keys}'
+        )
