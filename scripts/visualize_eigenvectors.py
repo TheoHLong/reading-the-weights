@@ -169,7 +169,7 @@ def plot_top_eigenvectors(
     else:
         fig.tight_layout(h_pad=1.8, w_pad=0.8)
     if number_panels:
-        fig.subplots_adjust(bottom=0.18)
+        fig.subplots_adjust(top=0.86, bottom=0.20)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=220)
     plt.close(fig)

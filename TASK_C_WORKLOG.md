@@ -25,6 +25,12 @@ Code/config additions:
 - `src/reading_weights/train.py`: optional `train_input_noise_std`
 - `configs/mnist_task_c_noise_mps.yaml`
 - `configs/fmnist_task_c_noise_mps.yaml`
+- `configs/mnist_task_c_noise040_mps.yaml`
+- `configs/fmnist_task_c_noise015_mps.yaml`
+- `configs/fmnist_task_c_noise030_mps.yaml`
+- `configs/fmnist_task_c_noise035_mps.yaml`
+- `configs/fmnist_task_c_noise040_mps.yaml`
+- `configs/fmnist_task_c_h512_noise030_mps.yaml`
 - `scripts/build_task_c_report_assets.py`
 
 ### MNIST regularized visualization run
@@ -54,9 +60,35 @@ Code/config additions:
 - Contents: all 10 MNIST classes and all 10 Fashion-MNIST classes, arranged as a readable `4 x 5` report panel.
 - Layout: first two rows are MNIST digits `0-9`; last two rows are Fashion-MNIST classes `t-shirt`, `trouser`, `pullover`, `dress`, `coat`, `sandal`, `shirt`, `sneaker`, `bag`, `ankle boot`.
 
+### Figure critique and final report asset revision
+
+After comparing the generated figures against the paper's Figure 2 style, the all-class Fashion-MNIST grid is still too visually uneven for a main report figure. This is not a plotting bug: it is the same overfitting/artifact failure mode discussed by the paper/tutorial for weakly regularized image classifiers.
+
+Additional local sweep:
+
+- `fmnist_task_c_noise015_mps_20260501-214608`: `train_input_noise_std=0.15`, best validation `89.28%`, test `88.40%`; figure remained too artifact-heavy.
+- `fmnist_task_c_noise030_mps_20260501-214753`: `train_input_noise_std=0.30`, best validation `88.68%`, test `87.84%`; clearer but still uneven.
+- `fmnist_task_c_h512_noise030_mps_20260501-214953`: `d_hidden=512`, `train_input_noise_std=0.30`, best validation `89.02%`, test `88.18%`; width did not materially solve the artifact problem.
+- `fmnist_task_c_noise035_mps_20260501-215439`: `train_input_noise_std=0.35`, best validation `88.28%`, test `87.53%`; no clear advantage over `0.40`.
+- `fmnist_task_c_noise040_mps_20260501-215229`: `train_input_noise_std=0.40`, best validation `87.78%`, test `87.13%`; cleanest representative Fashion-MNIST eigenvectors.
+- `mnist_task_c_noise040_mps_20260501-215725`: `train_input_noise_std=0.40`, best validation `98.22%`, test `98.16%`; strong MNIST visualization checkpoint.
+
+Final report-facing Task C figures:
+
+- `report_assets/task_c/mnist_figure2_style_eigenvectors.png`
+  - Source: `results/analysis/mnist_task_c_noise040_mps_20260501-215725/mnist_task_c_noise040_mps_20260501-215725/decomposition.pt`
+  - Classes shown: MNIST `0,1,2,3,4`
+  - Command: `.venv/bin/python scripts/visualize_eigenvectors.py --decomposition results/analysis/mnist_task_c_noise040_mps_20260501-215725/mnist_task_c_noise040_mps_20260501-215725/decomposition.pt --output report_assets/task_c/mnist_figure2_style_eigenvectors.png --dataset mnist --image-size 28 --channels 1 --class-indices 0,1,2,3,4 --number-panels`
+- `report_assets/task_c/fmnist_figure2_style_eigenvectors.png`
+  - Source: `results/analysis/fmnist_task_c_noise040_mps_20260501-215229/fmnist_task_c_noise040_mps_20260501-215229/decomposition.pt`
+  - Classes shown: Fashion-MNIST `trouser,pullover,dress,coat,sandal`
+  - Command: `.venv/bin/python scripts/visualize_eigenvectors.py --decomposition results/analysis/fmnist_task_c_noise040_mps_20260501-215229/fmnist_task_c_noise040_mps_20260501-215229/decomposition.pt --output report_assets/task_c/fmnist_figure2_style_eigenvectors.png --dataset fashion_mnist --image-size 28 --channels 1 --class-indices 1,2,3,4,5 --number-panels`
+- `report_assets/task_c/fmnist_regularized_all_eigenvectors.png`
+  - Supplemental all-class Fashion-MNIST grid; useful for transparency but not recommended as a main paper figure.
+
 ### Current read
 
 - Task C is now implemented in the reproducible and report-quality sense.
-- The report should use the all-class `task_c_eigenvector_panel.png` as the main Task C figure.
-- The all-class grids are useful supplementary assets.
+- The report should use the Figure-2-style selected panels as the main Task C qualitative figure.
+- The all-class grids are useful supplementary assets but should not be the main Fashion-MNIST figure.
 - The regularized Task C checkpoints are intended for qualitative eigenvector clarity; they should not replace the higher-accuracy baseline numbers when discussing classifier performance.
