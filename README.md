@@ -1,14 +1,26 @@
 # Reading the Weights
 
-CS7643 final project workspace for bilinear MLP weight interpretability.
+CS7643 final project repository for bilinear MLP weight interpretability.
 
-The project narrative is now:
+The final report asks whether the weight-reading framework of Pearce et al.
+scales beyond toy grayscale data. We reproduce the single-layer bilinear
+decomposition pipeline on MNIST/Fashion-MNIST, stress-test it on CIFAR-10,
+and test whether ResNet-derived KD/CKA alignment can supply the missing
+inductive bias. The main finding is structural: bilinear weight-reading applies
+and trains stably only in the single-layer regime. Locality helps on CIFAR-10,
+but depth removes the per-class `Q_c` matrix readout and introduces a
+degree-`2^L` optimization pathology.
 
-1. Reproduce the bilinear MLP weight-reading pipeline on MNIST and Fashion-MNIST.
-2. Extend the same pipeline to CIFAR-10 as a harder natural-image stress test.
-3. Study whether KD or CKA transfer changes bilinear student training behavior and weight structure.
-4. Add Signed Quadratic Shrink (SQS) gates as a stability/interpretability extension for bilinear-style GLUs.
-5. Test whether fixed locality-preserving CIFAR-10 preprocessing restores rank efficiency under the same weight analysis.
+## Final Submission
+
+The final report is maintained and submitted separately through Overleaf. This
+GitHub repository contains the implementation, configs, notebooks, and
+supporting generated figures/tables needed to understand the experiments.
+
+LaTeX source, Overleaf upload archives, and LaTeX build byproducts are
+intentionally ignored by git. The repository is meant to contain source code,
+configs, and lightweight supporting assets, not generated checkpoints or local
+experiment dumps.
 
 ## Layout
 
@@ -22,12 +34,12 @@ The project narrative is now:
 - `checkpoints/`: generated model checkpoints, ignored by git except `.gitkeep`.
 - `results/`: generated metrics, analysis artifacts, adversarial outputs, and diagnostics, ignored by git except `.gitkeep`.
 
-## Main Commands
+## Reproducing Report Runs
 
-Use the project environment that has PyTorch installed. On the current machine:
+Install the Python dependencies first:
 
 ```bash
-/Users/longtenghai/opt/anaconda3/envs/web-env/bin/python scripts/check_cka.py
+pip install -r requirements.txt
 ```
 
 Core replication:
@@ -39,72 +51,36 @@ python scripts/train_baseline.py --config configs/baselines/fmnist_baseline.yaml
 python scripts/analyze_checkpoint.py --checkpoint checkpoints/<best-run>.pt
 ```
 
-SQS paper-style MNIST/Fashion-MNIST runs:
+CIFAR-10 locality runs:
 
 ```bash
-python scripts/train_baseline.py --config configs/baselines/mnist_paper_bilinear.yaml
-python scripts/train_baseline.py --config configs/baselines/mnist_paper_sqs.yaml
-python scripts/train_baseline.py --config configs/baselines/fmnist_paper_bilinear.yaml
-python scripts/train_baseline.py --config configs/baselines/fmnist_paper_sqs.yaml
-```
-
-CIFAR-10 baseline and teacher:
-
-```bash
-python scripts/train_baseline.py --config configs/baselines/cifar10_baseline.yaml
 python scripts/train_baseline.py --config configs/cifar_compatibility/cifar10_foundation_baseline.yaml
-python scripts/train_baseline.py --config configs/cifar_compatibility/cifar10_completion_mps.yaml
+python scripts/train_baseline.py --config configs/cifar_compatibility/cifar10_locality2_50e_mps.yaml
 python scripts/train_baseline.py --config configs/cifar_compatibility/cifar10_locality4_wd001_50e_mps.yaml
-python scripts/train_guide.py --config configs/guides/resnet18_cifar10.yaml
-python scripts/eval_checkpoint.py --checkpoint checkpoints/resnet18_cifar10_teacher.pt
-```
-
-Truncation and report assets:
-
-```bash
 python scripts/evaluate_truncation.py --checkpoint checkpoints/<best-run>.pt --split test
-python scripts/build_task_c_report_assets.py --mnist-decomposition results/analysis/<mnist-run>/decomposition.pt --fmnist-decomposition results/analysis/<fmnist-run>/decomposition.pt
-python scripts/build_task_d_report_assets.py
 ```
 
-Transfer runs:
+Transfer and guide runs:
 
 ```bash
+python scripts/train_guide.py --config configs/guides/resnet18_cifar10.yaml
 python scripts/train_transfer.py --config configs/transfer/cifar10_kd.yaml
 python scripts/train_transfer.py --config configs/transfer/cifar10_cka.yaml
 python scripts/train_transfer.py --config configs/transfer/cifar10_cka_n4.yaml
+python scripts/train_transfer.py --config configs/transfer/cifar10_cka_n4_random_cnn_auto5.yaml
+python scripts/train_baseline.py --config configs/baselines/cifar10_baseline_n4_silu_s44.yaml
+python scripts/train_transfer.py --config configs/transfer/cifar10_cka_n4_silu_s44.yaml
 ```
 
-Adversarial masks:
-
-```bash
-python scripts/run_adversarial.py --checkpoint checkpoints/mnist_baseline_20260324-025128.pt
-python scripts/run_adversarial.py --checkpoint checkpoints/fmnist_baseline_20260324-025914.pt
-python scripts/run_adversarial.py --checkpoint checkpoints/cifar10_baseline_20260427-215646.pt
-```
-
-SQS eigenspectrum comparison:
-
-```bash
-python scripts/analyze_checkpoint.py --checkpoint checkpoints/mnist_paper_bilinear_<timestamp>.pt
-python scripts/analyze_checkpoint.py --checkpoint checkpoints/mnist_paper_sqs_<timestamp>.pt
-python scripts/compare_eigenvectors.py \
-  --bilinear-decomps results/analysis/mnist_paper_bilinear_<timestamp>/decomposition.pt \
-  --sqs-decomps results/analysis/mnist_paper_sqs_<timestamp>/decomposition.pt \
-  --output-dir results/figures/mnist_paper_sqs_vs_bilinear_figure_2b
-python scripts/visualize_eigenvectors.py \
-  --decomposition results/analysis/mnist_paper_sqs_<timestamp>/decomposition.pt \
-  --image-size 28 --channels 1 --label-set mnist \
-  --top-k 3 --bottom-k 3 \
-  --output results/figures/mnist_paper_sqs_eigenvectors.png
-```
-
-Task B noise sweep and Task E training dynamics:
+Report asset builders:
 
 ```bash
 python scripts/noise_sweep_analysis.py --config configs/baselines/mnist_baseline.yaml --mode norm
-python scripts/noise_sweep_analysis.py --config configs/baselines/fmnist_baseline.yaml --mode std --values 0.0 0.1 0.2 0.3 0.5
 python scripts/train_with_dynamics.py --config configs/baselines/mnist_baseline.yaml --checkpoint-after 10
+python scripts/run_adversarial.py --checkpoint checkpoints/mnist_baseline_20260324-025128.pt
+python scripts/run_adversarial.py --checkpoint checkpoints/fmnist_baseline_20260324-025914.pt
+python scripts/build_task_c_report_assets.py --mnist-decomposition results/analysis/<mnist-run>/decomposition.pt --fmnist-decomposition results/analysis/<fmnist-run>/decomposition.pt
+python scripts/build_task_d_report_assets.py
 ```
 
 Note: the two scripts apply input noise with different semantics on purpose.
@@ -115,30 +91,32 @@ Note: the two scripts apply input noise with different semantics on purpose.
   unclamped. Control via `--clamp {auto,unit,none}`.
 - `train_with_dynamics.py` reuses the project's existing `train.input_noise_std`
   training-noise path and does **not** clamp by default. This preserves the
-  semantics of existing SQS / paper-style configs that train with input noise
-  as regularization. Pass `--clamp-noisy-inputs` (or set
+  semantics of existing configs that train with input noise as regularization.
+  Pass `--clamp-noisy-inputs` (or set
   `train.clamp_noisy_inputs: true` in the config) to match the Task B
   perturbation semantics.
 
-## Current Results
+## Reported Results
 
-| Experiment | Best val acc | Notes |
-| --- | ---: | --- |
-| MNIST bilinear baseline | 97.99% | Core replication checkpoint exists. |
-| Fashion-MNIST bilinear baseline | 89.09% | Core replication checkpoint exists. |
-| MNIST paper-style bilinear / SQS | 95.38% / 95.20% | Uses SQS paper hyperparameters: noise=1.0, wd=0.1, batch=2048, epochs=20. |
-| Fashion-MNIST paper-style bilinear / SQS | 78.43% / 82.72% | SQS improves this local paper-style run; bilinear appears under-converged. |
-| CIFAR-10 1-layer bilinear baseline | 44.88% | Raw-pixel natural-image stress test. |
-| CIFAR-10 raw-pixel 50e / 4x4 pooled 50e | 44.52% / 45.92% | Ali compatibility runs; pooled model reaches near-full test accuracy by rank 64. |
-| CIFAR-10 1-layer SQS baseline / CKA | 47.22% / 47.70% | SQS gives a small single-layer gain; CKA gain is modest. |
-| CIFAR-10 ResNet-18 guide | 95.98% | Teacher checkpoint alias: `checkpoints/resnet18_cifar10_teacher.pt`. |
-| CIFAR-10 KD student | 45.10% | KD gives little improvement over 1-layer baseline. |
-| CIFAR-10 1-layer CKA student | 46.62% | Small but measurable improvement. |
-| CIFAR-10 4-layer pure bilinear baseline / CKA | 42.50% / 46.76% | Both collapse after early epochs in the latest run; deep pure bilinear is unstable. |
-| CIFAR-10 4-layer SQS baseline / CKA | 57.96% / 58.70% | SQS stabilizes depth; CKA adds a small extra gain. |
-| CIFAR-10 4-layer gated CKA student | 61.60% | Historical `gate: silu` run; useful as an optimization reference, not a bilinear decomposition target. |
+| Experiment | Val | Test | Notes |
+| --- | ---: | ---: | --- |
+| MNIST 1-layer bilinear | -- | 97.99% | Core replication. |
+| Fashion-MNIST 1-layer bilinear | -- | 89.09% | Core replication. |
+| MNIST regularized figure run | -- | 98.16% | Used for eigenvector figures. |
+| Fashion-MNIST regularized figure run | -- | 87.13% | Used for eigenvector figures. |
+| CIFAR-10 raw-pixel 50e | -- | 44.52% | `r_99=128`, broad spectrum. |
+| CIFAR-10 4x4 locality 50e | -- | 46.12% | `r_99=64`, sharper spectrum. |
+| ResNet-18 guide | 95.98% | 95.08% | External reference network. |
+| 1L bilinear, no transfer | 44.20% | 43.86% | Exact readout. |
+| 1L bilinear + KD | 44.58% | 44.26% | Little change. |
+| 1L bilinear + CKA | 46.20% | 46.40% | Small gain. |
+| 4L bilinear, no CKA | 42.50% | 42.79% | Unstable depth run. |
+| 4L bilinear + CKA | 52.38% | 52.23% | Helps training, not exact single-layer readout. |
+| 4L bilinear + random-guide CKA | 50.74% | -- | Validation-only diagnostic. |
+| 4L SiLU, no CKA | 46.88% | 48.20% | Non-decomposable control. |
+| 4L SiLU + CKA | 61.02% | 60.67% | Strong apparent CKA response, confounded with gate/capacity. |
 
-## Artifact Contract
+## Artifact Policy
 
 Training runs write:
 
@@ -153,7 +131,7 @@ Analysis runs write:
 - `results/analysis/<checkpoint_name>/summary.json`
 - `results/truncation/<checkpoint_name>/<split>_truncation.csv`
 - `results/truncation/<checkpoint_name>/<split>_summary.json`
-- `results/figures/<run_name>/...` for generated SQS comparison plots and CSVs
+- `results/figures/<run_name>/...` for generated plots and CSVs
 
 Adversarial runs write:
 
@@ -162,6 +140,10 @@ Adversarial runs write:
 - `results/adversarial/<checkpoint_name>/masks.png`
 - `results/adversarial/<checkpoint_name>/attack_metrics.json`
 - `results/adversarial/<checkpoint_name>/masks.pt`
+
+These generated outputs are ignored by git because they are large and
+machine-specific. The repository keeps configs, code, and lightweight
+supporting figures/tables instead.
 
 ## Public APIs
 
@@ -214,8 +196,8 @@ Adversarial runs write:
 
 ## Limitations
 
-- Decomposition currently supports single-layer `gate=None` and `gate='sqs'` students only. Deep checkpoints can be evaluated, but not decomposed yet.
-- SQS decomposition follows the SQS paper's weight-spectrum approximation: it forms interaction matrices directly from the GLU weights. It is not an exact pure quadratic model.
-- ReLU/GELU/SiLU checkpoints are excluded from weight-space bilinear decomposition because those gates do not preserve this approximation.
-- The previous strongest 4-layer CKA result used `gate: silu`, so it should be reported only as a training/optimization observation.
+- Exact per-class `Q_c` decomposition applies only to single-layer bilinear students. Deep bilinear checkpoints can be evaluated, but the report treats them as outside the exact matrix-readout framework.
+- SQS utilities remain in the codebase from exploratory runs, but SQS is not part of the final report's main claim.
+- ReLU/GELU/SiLU checkpoints are excluded from exact weight-space bilinear decomposition because those gates do not preserve the quadratic form.
+- The strongest 4-layer CKA result uses `gate: silu`, so it is reported only as a training/optimization diagnostic.
 - Random/noise guide variants also perform well, so CKA results should be interpreted as representational regularization evidence, not as a clean claim that trained ResNet semantics transferred.
