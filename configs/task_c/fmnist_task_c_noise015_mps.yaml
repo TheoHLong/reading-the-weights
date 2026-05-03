@@ -1,0 +1,31 @@
+experiment_name: fmnist_task_c_noise015_mps
+seed: 42
+output_dir: results/metrics
+checkpoint_dir: checkpoints
+
+dataset:
+  name: fashion_mnist
+  root: data/raw
+  image_size: 28
+  channels: 1
+  num_classes: 10
+
+model:
+  d_input: 784
+  d_hidden: 256
+  n_layer: 1
+  d_output: 10
+  bias: false
+  residual: false
+
+train:
+  epochs: 50
+  batch_size: 512
+  lr: 0.001
+  wd: 0.5
+  train_input_noise_std: 0.15
+  val_fraction: 0.1
+  split_seed: 42
+  num_workers: 0
+  pin_memory: false
+  device: mps

@@ -1,7 +1,9 @@
 einops
 jaxtyping
+matplotlib
 numpy
 pandas
+pillow
 pyyaml
 torch
 torchvision

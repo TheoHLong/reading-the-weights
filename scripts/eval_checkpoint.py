@@ -6,15 +6,15 @@ from pathlib import Path
 
 from torch import nn
 
-from _bootstrap import ensure_src_on_path
+from _bootstrap import ensure_project_on_path
 
-ensure_src_on_path()
+ensure_project_on_path()
 
-from reading_weights.data import build_image_dataloaders
-from reading_weights.guide import GUIDE_ARCHITECTURE, build_guide
-from reading_weights.model import build_image_classifier
-from reading_weights.train import evaluate
-from reading_weights.utils import load_checkpoint, resolve_device
+from src.data import build_image_dataloaders
+from src.guide import GUIDE_ARCHITECTURE, build_guide
+from src.model import build_image_classifier, load_image_classifier_state
+from src.train import evaluate
+from src.utils import load_checkpoint, resolve_device
 
 
 def build_model_from_checkpoint(payload: dict, device) -> tuple[nn.Module, str]:
@@ -30,7 +30,10 @@ def build_model_from_checkpoint(payload: dict, device) -> tuple[nn.Module, str]:
     else:
         raise ValueError('Unsupported checkpoint type for evaluation.')
 
-    model.load_state_dict(payload['model_state_dict'])
+    if model_label == 'bilinear_student':
+        load_image_classifier_state(model, payload['model_state_dict'])
+    else:
+        model.load_state_dict(payload['model_state_dict'])
     model.to(device)
     return model, model_label
 

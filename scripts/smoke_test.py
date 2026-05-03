@@ -7,15 +7,15 @@ from pathlib import Path
 
 import torch
 
-from _bootstrap import ensure_src_on_path
+from _bootstrap import ensure_project_on_path
 
-ensure_src_on_path()
+ensure_project_on_path()
 
-from reading_weights.decomposition import decompose_bilinear_model
-from reading_weights.config import load_config
-from reading_weights.model import build_image_classifier
-from reading_weights.train import train_image_experiment
-from reading_weights.utils import ensure_dir, load_checkpoint, write_json
+from src.decomposition import decompose_bilinear_model
+from src.config import load_config
+from src.model import build_image_classifier, load_image_classifier_state
+from src.train import train_image_experiment
+from src.utils import ensure_dir, load_checkpoint, write_json
 
 
 def main() -> None:
@@ -23,8 +23,13 @@ def main() -> None:
     parser.add_argument(
         '--config',
         type=Path,
-        default=Path('configs/mnist_baseline.yaml'),
+        default=Path('configs/baselines/mnist_baseline.yaml'),
         help='Baseline config to derive the smoke test from.',
+    )
+    parser.add_argument(
+        '--device',
+        default=None,
+        help='Optional device override for smoke runs, for example cpu when an MPS config is checked on a non-MPS host.',
     )
     args = parser.parse_args()
 
@@ -36,12 +41,14 @@ def main() -> None:
     config['train']['pin_memory'] = False
     config['train']['max_train_batches'] = 2
     config['train']['max_eval_batches'] = 1
+    if args.device is not None:
+        config['train']['device'] = args.device
 
     artifacts = train_image_experiment(config)
     payload = load_checkpoint(artifacts['best_checkpoint_path'], map_location='cpu')
 
     model = build_image_classifier(payload['config']['model'], seed=int(payload['config']['seed']))
-    model.load_state_dict(payload['model_state_dict'])
+    load_image_classifier_state(model, payload['model_state_dict'])
     model.eval()
 
     decomposition = decompose_bilinear_model(model)

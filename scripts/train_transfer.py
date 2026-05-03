@@ -4,26 +4,34 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from _bootstrap import ensure_src_on_path
+from _bootstrap import ensure_project_on_path
 
-ensure_src_on_path()
+ensure_project_on_path()
 
-from reading_weights.config import load_config
-from reading_weights.transfer import train_kd_experiment
+from src.config import load_config
+from src.transfer import train_cka_experiment, train_kd_experiment
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description='Train a bilinear student with knowledge distillation.')
+    parser = argparse.ArgumentParser(description='Train a bilinear student with transfer guidance.')
     parser.add_argument(
         '--config',
         type=Path,
-        default=Path('configs/cifar10_kd.yaml'),
+        default=Path('configs/transfer/cifar10_kd.yaml'),
         help='Path to the YAML config file.',
     )
     args = parser.parse_args()
 
-    artifacts = train_kd_experiment(load_config(args.config))
-    print('KD training complete.')
+    config = load_config(args.config)
+    method = config.get('transfer', {}).get('method')
+    if method == 'kd':
+        artifacts = train_kd_experiment(config)
+    elif method == 'cka':
+        artifacts = train_cka_experiment(config)
+    else:
+        raise ValueError(f"Unknown transfer.method: {method!r}")
+
+    print(f'{method.upper()} training complete.')
     for key, value in artifacts.items():
         print(f'{key}: {value}')
 

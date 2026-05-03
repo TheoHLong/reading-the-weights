@@ -5,12 +5,25 @@
 __pycache__/
 *.py[cod]
 *.so
+*.egg-info/
 .venv/
 venv/
 env/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# LaTeX build artifacts and local archives
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.zip
 
 # Experiment outputs
 data/raw/*
@@ -21,7 +34,26 @@ results/analysis/*
 !results/analysis/.gitkeep
 results/metrics/*
 !results/metrics/.gitkeep
+results/adversarial/*
+!results/adversarial/.gitkeep
+results/diagnostics/*
+!results/diagnostics/.gitkeep
+results/figures/*
+!results/figures/.gitkeep
+results/truncation/*
+!results/truncation/.gitkeep
 wandb/
+report_assets/.mplconfig/
+tmp/
+latex/
+latex_template/
+
+# Local/generated experiment helpers
+configs/**/_*.yaml
+
+# Local session notes
+HANDOFF.md
+COLAB_RERUN_COMMANDS.md
 
 # Editor
 .vscode/
